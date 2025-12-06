@@ -319,7 +319,8 @@ public class BarbarianFishingPlugin extends Plugin {
         // Initialize dropper on first entry to this state
         if (dropper == null) {
             log(">>> Initializing HumanLikeDropper for fish");
-            dropper = new HumanLikeDropper(getFishIdsToDrop());
+            dropper = new HumanLikeDropper(getFishIdsToDrop())
+                    .setLogging(config.debugLogging());
         }
 
         // Check if we still have fish to drop

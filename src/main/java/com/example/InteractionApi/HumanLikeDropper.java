@@ -26,6 +26,7 @@ public class HumanLikeDropper {
     private final Set<Integer> missedIndices = new HashSet<>();
     private boolean initialized = false;
     private final Predicate<Widget> itemFilter;
+    private boolean enableLogging = false;
 
     /**
      * Create a dropper for specific item IDs
@@ -60,6 +61,22 @@ public class HumanLikeDropper {
     }
 
     /**
+     * Enable debug logging
+     * @param enabled true to enable logging
+     * @return this instance for chaining
+     */
+    public HumanLikeDropper setLogging(boolean enabled) {
+        this.enableLogging = enabled;
+        return this;
+    }
+
+    private void log(String message) {
+        if (enableLogging) {
+            System.out.println("[HumanLikeDropper] " + message);
+        }
+    }
+
+    /**
      * Drop the next batch of items (2-5 items per call)
      * @return true if more items remain to drop, false if all items are dropped
      */
@@ -71,12 +88,18 @@ public class HumanLikeDropper {
 
         // No items to drop - we're done
         if (allItems.isEmpty()) {
+            log("No items found to drop");
             return false;
         }
 
         // First time - randomly select which items to "miss" (0-5 items)
         if (!initialized) {
-            int numToMiss = ThreadLocalRandom.current().nextInt(0, Math.min(6, allItems.size() + 1));
+            int maxToMiss = Math.min(6, allItems.size() + 1);
+            int numToMiss = ThreadLocalRandom.current().nextInt(0, maxToMiss);
+
+            log(String.format("Initializing dropper: found %d items, will miss %d items (max possible: %d)",
+                allItems.size(), numToMiss, maxToMiss - 1));
+
             if (numToMiss > 0) {
                 // Randomly pick which item indices to skip
                 List<Widget> shuffled = new ArrayList<>(allItems);
@@ -84,6 +107,11 @@ public class HumanLikeDropper {
                 for (int i = 0; i < numToMiss; i++) {
                     missedIndices.add(shuffled.get(i).getIndex());
                 }
+
+                String missedSlots = missedIndices.stream()
+                        .map(String::valueOf)
+                        .collect(Collectors.joining(", "));
+                log(String.format("Will 'miss' items at inventory slots: [%s]", missedSlots));
             }
             initialized = true;
         }
@@ -138,6 +166,8 @@ public class HumanLikeDropper {
             itemsToDrop = missedItems.stream()
                     .limit(dropsThisTick)
                     .collect(Collectors.toList());
+
+            log(String.format("CLEANUP PHASE: dropping %d/%d missed items", dropsThisTick, missedItems.size()));
         } else if (!normalItems.isEmpty()) {
             // Normal phase: drop normal items (skip missed ones)
             int dropsThisTick = ThreadLocalRandom.current().nextInt(2, 6);
@@ -146,7 +176,11 @@ public class HumanLikeDropper {
             itemsToDrop = normalItems.stream()
                     .limit(dropsThisTick)
                     .collect(Collectors.toList());
+
+            log(String.format("NORMAL PHASE: dropping %d items (normal: %d, missed: %d)",
+                dropsThisTick, normalItems.size(), missedItems.size()));
         } else {
+            log("No items to drop this tick");
             return false; // Nothing to drop
         }
 
@@ -155,6 +189,12 @@ public class HumanLikeDropper {
             MousePackets.queueClickPacket();
             WidgetPackets.queueWidgetAction(item, "Drop");
         }
+
+        // Log which slots are being dropped
+        String slotIndices = itemsToDrop.stream()
+                .map(w -> String.valueOf(w.getIndex()))
+                .collect(Collectors.joining(", "));
+        log(String.format("Queued %d drops this tick | Slots: [%s]", itemsToDrop.size(), slotIndices));
 
         return true; // More items may remain
     }
