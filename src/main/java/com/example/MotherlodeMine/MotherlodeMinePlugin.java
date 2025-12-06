@@ -30,7 +30,8 @@ import static com.example.MotherlodeMine.MotherlodeMineConstants.*;
         name = "A Motherlode Mine Auto",
         description = "Automatically mines pay-dirt deposits in Motherlode Mine with debugging overlays",
         tags = {"motherlode", "mine", "mining", "skilling", "paydirt"},
-        hidden = false
+        hidden = false,
+        enabledByDefault = false
 )
 public class MotherlodeMinePlugin extends Plugin {
 

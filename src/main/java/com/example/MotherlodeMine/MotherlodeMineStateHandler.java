@@ -49,7 +49,7 @@ public class MotherlodeMineStateHandler {
      * Logging helper - wraps the injected logger for consistent syntax
      */
     private void log(String message) {
-        log(message);
+        logger.accept(message);
     }
 
     // Getters

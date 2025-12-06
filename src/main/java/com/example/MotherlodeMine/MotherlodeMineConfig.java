@@ -15,7 +15,7 @@ public interface MotherlodeMineConfig extends Config {
             description = "Automatically re-click pay-dirt deposits when player stops mining"
     )
     default boolean enableAutoMining() {
-        return true;
+        return false;
     }
 
     @ConfigItem(

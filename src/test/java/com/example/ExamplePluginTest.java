@@ -1,5 +1,6 @@
 package com.example;
 
+import com.example.BarbarianFishing.BarbarianFishingPlugin;
 import com.example.CrashedStar.CrashedStarPlugin;
 import com.example.DemonicGorilla.DemonicGorillaPlugin;
 import com.example.EthanApiPlugin.EthanApiPlugin;
@@ -19,7 +20,8 @@ public class ExamplePluginTest {
                 DemonicGorillaPlugin.class,
                 GearSwitcherPlugin.class,
                 MotherlodeMinePlugin.class,
-                TestingPlugin.class
+                TestingPlugin.class,
+                BarbarianFishingPlugin.class
         );
         RuneLite.main(args);
     }

@@ -22,7 +22,8 @@ import static com.example.MotherlodeMine.MotherlodeMineConstants.*;
         name = "A Testing",
         description = "Testing plugin",
         tags = {"testing"},
-        hidden = false
+        hidden = false,
+        enabledByDefault = false
 )
 
 public class TestingPlugin extends Plugin {
