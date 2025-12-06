@@ -90,42 +90,6 @@ public interface MotherlodeMineConfig extends Config {
         return true;
     }
 
-    @ConfigItem(
-            keyName = "maxDistance",
-            name = "Max Vein Distance",
-            description = "Maximum distance to search for veins (prevents clicking unreachable veins)"
-    )
-    default int maxDistance() {
-        return 5;
-    }
-
-    @ConfigItem(
-            keyName = "requireSamePlane",
-            name = "Same Plane/Level Only",
-            description = "Only click veins on the same plane/level as player (prevents cross-level clicks)"
-    )
-    default boolean requireSamePlane() {
-        return true;
-    }
-
-    @ConfigItem(
-            keyName = "strictProximity",
-            name = "Strict Proximity Check",
-            description = "Require vein to be close in both X and Y coordinates (helps avoid clicking through walls)"
-    )
-    default boolean strictProximity() {
-        return true;
-    }
-
-    @ConfigItem(
-            keyName = "maxCoordinateDiff",
-            name = "Max Coordinate Difference",
-            description = "Maximum X or Y coordinate difference when Strict Proximity is enabled"
-    )
-    default int maxCoordinateDiff() {
-        return 4;
-    }
-
     // ===== MINING REGION SETTINGS =====
 
     @ConfigItem(
@@ -171,15 +135,6 @@ public interface MotherlodeMineConfig extends Config {
     )
     default int regionMaxY() {
         return 5675;
-    }
-
-    @ConfigItem(
-            keyName = "handleRockfalls",
-            name = "Handle Rockfalls",
-            description = "Automatically clear rockfall obstacles blocking veins"
-    )
-    default boolean handleRockfalls() {
-        return true;
     }
 
     // ===== HOPPER DEPOSIT SETTINGS =====
