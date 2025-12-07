@@ -2,6 +2,7 @@ package com.example.BarbarianFishing;
 
 import com.example.EthanApiPlugin.Collections.Inventory;
 import com.example.EthanApiPlugin.Collections.NPCs;
+import com.example.InteractionApi.HumanLikeDelay;
 import com.example.InteractionApi.HumanLikeDropper;
 import com.example.InteractionApi.NPCInteraction;
 import com.google.inject.Inject;
@@ -175,14 +176,9 @@ public class BarbarianFishingPlugin extends Plugin {
     private void clickFishingSpot(NPC fishingSpot) {
         currentTarget = fishingSpot;
 
-        // Generate new random cooldown for next interaction
-        currentInteractionCooldown = ThreadLocalRandom.current().nextInt(
-                MIN_INTERACTION_COOLDOWN,
-                MAX_INTERACTION_COOLDOWN + 1
-        );
-
-        log(String.format("Clicking fishing spot (ID: %d) at %s | Next cooldown: %d ticks",
-                fishingSpot.getId(), fishingSpot.getWorldLocation(), currentInteractionCooldown));
+        // Generate new weighted random cooldown for next interaction
+        currentInteractionCooldown = HumanLikeDelay.generate(HumanLikeDelay.INTERACTION_COOLDOWN);
+        log(String.format("Generated interaction cooldown: %d ticks", currentInteractionCooldown));
 
         NPCInteraction.interact(fishingSpot, "Use-rod");
         ticksSinceLastInteraction = 0;
@@ -217,19 +213,10 @@ public class BarbarianFishingPlugin extends Plugin {
         }
 
         boolean currentlyFishing = isFishing();
-        int animation = getCurrentAnimation();
 
         if (currentlyFishing) {
-            if (!wasFishing) {
-                log(String.format("*** STARTED FISHING - Animation: %d", animation));
-            }
             wasFishing = true;
             idleTickCount = 0;
-        } else {
-            // Log animation changes even when not fishing (for debugging)
-            if (animation != -1 && animation != 808 && animation != 813) {
-                log(String.format("Animation changed to: %d (not recognized as fishing)", animation));
-            }
         }
     }
 
@@ -246,18 +233,6 @@ public class BarbarianFishingPlugin extends Plugin {
         tickCounter++;
         ticksSinceLastInteraction++;
         boolean currentlyFishing = isFishing();
-        int animation = getCurrentAnimation();
-
-        // Log animation and state every 5 ticks for debugging
-        if (tickCounter % 5 == 0) {
-            log(String.format("[Tick %d] Animation: %d | Fishing: %s | WasFishing: %s | State: %s | InvSlots: %d",
-                    tickCounter, animation, currentlyFishing, wasFishing, currentState, Inventory.getEmptySlots()));
-
-            // Alert if we see an unknown animation that's not idle
-            if (animation != -1 && !currentlyFishing && animation != 808 && animation != 813) {
-                log(String.format("??? UNKNOWN ANIMATION: %d - You may need to add this to FISHING_ANIMATIONS array", animation));
-            }
-        }
 
         // Handle state machine
         switch (currentState) {
@@ -281,24 +256,20 @@ public class BarbarianFishingPlugin extends Plugin {
     private void handleFishingState(boolean currentlyFishing) {
         // Check if inventory is full and we should drop
         if (isInventoryFull() && config.autoDrop()) {
-            // First tick detecting full inventory - generate random delay
+            // First tick detecting full inventory - generate weighted random delay
             if (!inventoryFullDetected) {
-                randomInventoryFullDelay = ThreadLocalRandom.current().nextInt(
-                        MIN_INVENTORY_FULL_DELAY,
-                        MAX_INVENTORY_FULL_DELAY + 1
-                );
-                log(String.format("!!! INVENTORY FULL - Generated reaction delay: %d ticks (range: %d-%d)",
-                        randomInventoryFullDelay, MIN_INVENTORY_FULL_DELAY, MAX_INVENTORY_FULL_DELAY));
+                randomInventoryFullDelay = HumanLikeDelay.generate(HumanLikeDelay.INVENTORY_FULL);
+                log(String.format("Generated inventory full reaction delay: %d ticks", randomInventoryFullDelay));
                 inventoryFullDetected = true;
                 inventoryFullTickCount = 0;
             }
 
             inventoryFullTickCount++;
-            log(String.format(">>> Inventory full reaction delay: %d/%d", inventoryFullTickCount, randomInventoryFullDelay));
+            log(String.format("Inventory full reaction delay: %d/%d", inventoryFullTickCount, randomInventoryFullDelay));
 
             // Wait for random delay before switching to dropping
             if (inventoryFullTickCount >= randomInventoryFullDelay) {
-                log(">>> Reaction delay complete - Switching to dropping mode");
+                log("Inventory full reaction delay complete");
                 currentState = PluginState.DROPPING;
                 wasFishing = false;
                 inventoryFullDetected = false;
@@ -310,7 +281,6 @@ public class BarbarianFishingPlugin extends Plugin {
 
         // Reset inventory full tracking if inventory is no longer full
         if (!isInventoryFull() && inventoryFullDetected) {
-            log(">>> Inventory no longer full - resetting detection");
             inventoryFullDetected = false;
             inventoryFullTickCount = 0;
             randomInventoryFullDelay = 0;
@@ -322,10 +292,7 @@ public class BarbarianFishingPlugin extends Plugin {
             if (ticksSinceLastInteraction >= currentInteractionCooldown) {
                 Optional<NPC> nearestSpot = findNearestFishingSpot();
                 if (nearestSpot.isPresent()) {
-                    log(">>> Not fishing - clicking fishing spot to start");
                     clickFishingSpot(nearestSpot.get());
-                } else {
-                    log("!!! NO FISHING SPOT FOUND - Check IDs or get closer");
                 }
             }
             return;
@@ -333,33 +300,24 @@ public class BarbarianFishingPlugin extends Plugin {
 
         // If we were fishing but now we're not (stopped)
         if (wasFishing && !currentlyFishing) {
-            // First tick we notice we stopped - generate random delay for this spot switch
+            // First tick we notice we stopped - generate weighted random delay for this spot switch
             if (idleTickCount == 0) {
-                randomSpotSwitchDelay = ThreadLocalRandom.current().nextInt(
-                        MIN_SPOT_SWITCH_DELAY,
-                        MAX_SPOT_SWITCH_DELAY + 1
-                );
-                log(String.format(">>> STOPPED FISHING - Generated random delay: %d ticks (range: %d-%d)",
-                        randomSpotSwitchDelay, MIN_SPOT_SWITCH_DELAY, MAX_SPOT_SWITCH_DELAY));
+                randomSpotSwitchDelay = HumanLikeDelay.generate(HumanLikeDelay.RESOURCE_DEPLETION);
+                log(String.format("Generated spot switch delay: %d ticks", randomSpotSwitchDelay));
             }
 
             idleTickCount++;
-            log(String.format(">>> Idle tick %d/%d", idleTickCount, randomSpotSwitchDelay));
+            log(String.format("Spot switch delay: %d/%d", idleTickCount, randomSpotSwitchDelay));
 
             // Wait for the random delay before clicking new spot
             if (idleTickCount >= randomSpotSwitchDelay) {
-                log("!!! Random delay threshold reached - Finding next fishing spot");
-
                 // Only interact if cooldown has passed
                 if (ticksSinceLastInteraction >= currentInteractionCooldown) {
                     Optional<NPC> nearestSpot = findNearestFishingSpot();
                     if (nearestSpot.isPresent()) {
-                        log(String.format(">>> CLICKING NEW FISHING SPOT: ID %d",
-                                nearestSpot.get().getId()));
                         clickFishingSpot(nearestSpot.get());
                         wasFishing = false; // Reset so we wait for fishing to start again
                     } else {
-                        log("!!! NO FISHING SPOT FOUND - Check IDs or get closer");
                         wasFishing = false;
                     }
                 }
@@ -369,9 +327,6 @@ public class BarbarianFishingPlugin extends Plugin {
             }
         } else if (currentlyFishing) {
             // Reset idle counter if we're fishing
-            if (idleTickCount > 0) {
-                log("Fishing resumed, resetting idle counter");
-            }
             idleTickCount = 0;
             randomSpotSwitchDelay = 0;
         }
@@ -384,22 +339,15 @@ public class BarbarianFishingPlugin extends Plugin {
     private void handleDroppingState() {
         // Initialize dropper on first entry to this state
         if (dropper == null) {
-            log(">>> Initializing HumanLikeDropper for fish");
             dropper = new HumanLikeDropper(getFishIdsToDrop())
-                    .setLogging(config.debugLogging());
+                    .setLogging(false); // Disable dropper logging
         }
 
         // Check if we still have fish to drop
         if (!hasFish()) {
-            log(">>> All fish dropped - entering post-drop delay");
-
-            // Generate random delay before returning to fishing
-            randomPostDropDelay = ThreadLocalRandom.current().nextInt(
-                    MIN_POST_DROP_DELAY,
-                    MAX_POST_DROP_DELAY + 1
-            );
-            log(String.format(">>> Generated post-drop delay: %d ticks (range: %d-%d)",
-                    randomPostDropDelay, MIN_POST_DROP_DELAY, MAX_POST_DROP_DELAY));
+            // Generate weighted random delay before returning to fishing
+            randomPostDropDelay = HumanLikeDelay.generate(HumanLikeDelay.POST_ACTIVITY_RESUME);
+            log(String.format("Generated post-drop delay: %d ticks", randomPostDropDelay));
 
             currentState = PluginState.POST_DROP_DELAY;
             dropper = null; // Reset for next time
@@ -411,20 +359,13 @@ public class BarbarianFishingPlugin extends Plugin {
         boolean hasMore = dropper.dropNextBatch();
 
         if (hasMore) {
-            log(">>> Dropped batch of fish, more remaining");
             ticksSinceLastInteraction = 0;
         } else {
             // Dropper says no more items, but double-check
             if (!hasFish()) {
-                log(">>> All fish dropped - entering post-drop delay");
-
-                // Generate random delay before returning to fishing
-                randomPostDropDelay = ThreadLocalRandom.current().nextInt(
-                        MIN_POST_DROP_DELAY,
-                        MAX_POST_DROP_DELAY + 1
-                );
-                log(String.format(">>> Generated post-drop delay: %d ticks (range: %d-%d)",
-                        randomPostDropDelay, MIN_POST_DROP_DELAY, MAX_POST_DROP_DELAY));
+                // Generate weighted random delay before returning to fishing
+                randomPostDropDelay = HumanLikeDelay.generate(HumanLikeDelay.POST_ACTIVITY_RESUME);
+                log(String.format("Generated post-drop delay: %d ticks", randomPostDropDelay));
 
                 currentState = PluginState.POST_DROP_DELAY;
                 dropper = null;
@@ -439,11 +380,10 @@ public class BarbarianFishingPlugin extends Plugin {
      */
     private void handlePostDropDelayState() {
         postDropTickCount++;
-
-        log(String.format(">>> Post-drop delay tick %d/%d", postDropTickCount, randomPostDropDelay));
+        log(String.format("Post-drop delay: %d/%d", postDropTickCount, randomPostDropDelay));
 
         if (postDropTickCount >= randomPostDropDelay) {
-            log(">>> Post-drop delay complete - returning to fishing");
+            log("Post-drop delay complete");
             currentState = PluginState.FISHING;
             postDropTickCount = 0;
             randomPostDropDelay = 0;

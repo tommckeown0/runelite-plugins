@@ -367,6 +367,9 @@ public class MotherlodeMinePlugin extends Plugin {
             if (config.stopWhenFull() && !config.autoDeposit()) {
                 return; // Don't auto-click new veins when inventory is full
             }
+        } else if (!isInventoryFull()) {
+            // Reset inventory full detection if inventory is no longer full
+            stateHandler.resetInventoryFullDetection();
         }
 
         // Don't check sack during RETURNING or MINING - we want to complete current mining cycle

@@ -82,8 +82,31 @@ public class MotherlodeMineConstants {
     // State machine constants
     public static final int IDLE_TICKS_BEFORE_RECLICK = 3;
     public static final int MAX_DEPOSIT_ATTEMPTS = 50;
-    public static final int INTERACTION_COOLDOWN = 3;
     public static final int DEPOSITS_BEFORE_SACK = 4;
+
+    // Variable interaction cooldown (human-like behavior)
+    public static final int MIN_INTERACTION_COOLDOWN = 1;  // Minimum ticks between interactions
+    public static final int MAX_INTERACTION_COOLDOWN = 3;  // Maximum ticks between interactions
+    public static final int INTERACTION_COOLDOWN = 2;      // General interaction cooldown for state transitions
+
+    // Random delay bounds for various actions (human-like behavior)
+    public static final int MIN_VEIN_DEPLETION_DELAY = 2;   // Minimum ticks after vein depletes
+    public static final int MAX_VEIN_DEPLETION_DELAY = 40;  // Maximum ticks after vein depletes
+
+    public static final int MIN_INVENTORY_FULL_DELAY = 1;   // Minimum ticks to react to full inventory
+    public static final int MAX_INVENTORY_FULL_DELAY = 5;   // Maximum ticks to react to full inventory
+
+    public static final int MIN_POST_TUNNEL_DELAY = 3;      // Minimum ticks after exiting tunnel before mining
+    public static final int MAX_POST_TUNNEL_DELAY = 15;     // Maximum ticks after exiting tunnel before mining
+
+    public static final int MIN_GEM_DROP_DELAY = 0;         // Minimum ticks before dropping a gem
+    public static final int MAX_GEM_DROP_DELAY = 10;        // Maximum ticks before dropping a gem
+
+    public static final int MIN_POST_SACK_DELAY = 2;        // Minimum ticks after emptying sack
+    public static final int MAX_POST_SACK_DELAY = 20;       // Maximum ticks after emptying sack
+
+    public static final int MIN_POST_DEPOSIT_DELAY = 2;     // Minimum ticks after depositing ores
+    public static final int MAX_POST_DEPOSIT_DELAY = 40;    // Maximum ticks after depositing ores
 
     // Plugin state enum
     public enum PluginState {
