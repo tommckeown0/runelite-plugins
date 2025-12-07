@@ -38,15 +38,15 @@ public class BarbarianFishingConstants {
 
     // Random delay bounds when fishing spot depletes (human-like behavior)
     public static final int MIN_SPOT_SWITCH_DELAY = 3;  // Minimum ticks before clicking new spot
-    public static final int MAX_SPOT_SWITCH_DELAY = 40; // Maximum ticks before clicking new spot
+    public static final int MAX_SPOT_SWITCH_DELAY = 15; // Maximum ticks before clicking new spot
 
     // Random delay bounds after finishing dropping fish (human-like behavior)
     public static final int MIN_POST_DROP_DELAY = 2;  // Minimum ticks after dropping before fishing again
-    public static final int MAX_POST_DROP_DELAY = 40; // Maximum ticks after dropping before fishing again
+    public static final int MAX_POST_DROP_DELAY = 9; // Maximum ticks after dropping before fishing again
 
     // Random delay after detecting full inventory (human-like behavior)
     public static final int MIN_INVENTORY_FULL_DELAY = 1;  // Minimum ticks to react to full inventory
-    public static final int MAX_INVENTORY_FULL_DELAY = 5;  // Maximum ticks to react to full inventory
+    public static final int MAX_INVENTORY_FULL_DELAY = 11;  // Maximum ticks to react to full inventory
 
     // Plugin state enum
     public enum PluginState {
