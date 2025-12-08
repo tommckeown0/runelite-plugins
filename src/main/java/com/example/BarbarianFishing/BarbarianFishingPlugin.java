@@ -2,10 +2,13 @@ package com.example.BarbarianFishing;
 
 import com.example.EthanApiPlugin.Collections.Inventory;
 import com.example.EthanApiPlugin.Collections.NPCs;
+import com.example.InteractionApi.CameraController;
 import com.example.InteractionApi.HumanLikeDelay;
 import com.example.InteractionApi.HumanLikeDropper;
 import com.example.InteractionApi.NPCInteraction;
 import com.example.InteractionApi.RealisticClickHelper;
+import com.example.Packets.MousePackets;
+import com.example.Packets.NPCPackets;
 import com.google.inject.Inject;
 import com.google.inject.Provides;
 import net.runelite.api.Client;
@@ -29,8 +32,8 @@ import java.util.concurrent.ThreadLocalRandom;
 import static com.example.BarbarianFishing.BarbarianFishingConstants.*;
 
 @PluginDescriptor(
-        name = "A Barbarian Fishing Auto",
-        description = "Automatically fishes and drops fish at barbarian fishing spots",
+        name = "A Barbarian Fishing",
+        description = "Barbarian fishing helper",
         tags = {"barbarian", "fishing", "skilling", "training"},
         hidden = false,
         enabledByDefault = false
@@ -89,8 +92,10 @@ public class BarbarianFishingPlugin extends Plugin {
 
         // Enable coordinate logging if debug mode is on
         RealisticClickHelper.setLoggingEnabled(config.debugLogging());
+        CameraController.setLoggingEnabled(config.debugLogging());
         if (config.debugLogging()) {
             log("Coordinate logging enabled");
+            log("Camera logging enabled");
         }
 
         resetState();
@@ -192,7 +197,20 @@ public class BarbarianFishingPlugin extends Plugin {
         currentInteractionCooldown = HumanLikeDelay.generate(HumanLikeDelay.INTERACTION_COOLDOWN);
         log(String.format("Generated interaction cooldown: %d ticks", currentInteractionCooldown));
 
-        NPCInteraction.interact(fishingSpot, "Use-rod");
+        // Check if we should rotate camera to see the fishing spot
+        if (config.enableCameraMovement()) {
+            java.awt.Point clickPoint = RealisticClickHelper.getNPCClickPoint(fishingSpot, true);
+            if (clickPoint != null) {
+                MousePackets.queueClickPacket(clickPoint.x, clickPoint.y);
+                NPCPackets.queueNPCAction(fishingSpot, "Use-rod");
+            } else {
+                log("WARNING: Could not get click point for fishing spot, falling back to NPCInteraction");
+                NPCInteraction.interact(fishingSpot, "Use-rod");
+            }
+        } else {
+            NPCInteraction.interact(fishingSpot, "Use-rod");
+        }
+
         ticksSinceLastInteraction = 0;
         interactionAttempts++;
     }
@@ -244,10 +262,20 @@ public class BarbarianFishingPlugin extends Plugin {
 
         // Update coordinate logging if debug setting changed
         RealisticClickHelper.setLoggingEnabled(config.debugLogging());
+        CameraController.setLoggingEnabled(config.debugLogging());
 
         tickCounter++;
         ticksSinceLastInteraction++;
         boolean currentlyFishing = isFishing();
+
+        // Random camera adjustments for realism
+        if (config.enableCameraMovement() && config.randomCameraAdjustments()) {
+            int meanIntervalSeconds = config.cameraAdjustmentInterval();
+            if (CameraController.shouldMakeRandomAdjustment(meanIntervalSeconds)) {
+                log("Making random camera adjustment for realism");
+                CameraController.randomAdjustment(meanIntervalSeconds);
+            }
+        }
 
         // Handle state machine
         switch (currentState) {

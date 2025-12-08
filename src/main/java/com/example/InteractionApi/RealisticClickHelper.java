@@ -44,6 +44,16 @@ public class RealisticClickHelper {
      * @return Point with canvas coordinates, or null if NPC not visible
      */
     public static java.awt.Point getNPCClickPoint(NPC npc) {
+        return getNPCClickPoint(npc, false);
+    }
+
+    /**
+     * Get a realistic click point for an NPC, optionally rotating camera if off-screen
+     * @param npc The NPC to click
+     * @param rotateIfNeeded If true, will rotate camera to bring NPC into view
+     * @return Point with canvas coordinates, or null if NPC not visible
+     */
+    public static java.awt.Point getNPCClickPoint(NPC npc, boolean rotateIfNeeded) {
         if (npc == null) {
             log("getNPCClickPoint: npc is null");
             return null;
@@ -72,6 +82,21 @@ public class RealisticClickHelper {
                 log(String.format("NPC Click → \"%s\" (ID: %d) | Tile Poly | Bounds: [%d,%d %dx%d] | Click: (%d, %d)",
                         npcName, npcId, bounds.x, bounds.y, bounds.width, bounds.height, point.x, point.y));
                 return point;
+            }
+        }
+
+        // NPC is off-screen - rotate camera if requested
+        if (rotateIfNeeded && npc.getWorldLocation() != null) {
+            log(String.format("getNPCClickPoint: \"%s\" (ID: %d) is off-screen, rotating camera...", npcName, npcId));
+            if (CameraController.ensureEntityVisible(npc.getWorldLocation())) {
+                // Camera rotated, wait a moment for rendering
+                try {
+                    Thread.sleep(100);
+                } catch (InterruptedException e) {
+                    Thread.currentThread().interrupt();
+                }
+                // Retry getting click point
+                return getNPCClickPoint(npc, false); // Don't recurse infinitely
             }
         }
 

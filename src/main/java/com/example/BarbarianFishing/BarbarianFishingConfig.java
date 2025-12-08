@@ -89,4 +89,31 @@ public interface BarbarianFishingConfig extends Config {
     default boolean dropLeapingSturgeon() {
         return true;
     }
+
+    @ConfigItem(
+            keyName = "enableCameraMovement",
+            name = "Enable Camera Movement",
+            description = "Automatically adjust camera for better view and realism"
+    )
+    default boolean enableCameraMovement() {
+        return true;
+    }
+
+    @ConfigItem(
+            keyName = "randomCameraAdjustments",
+            name = "Random Camera Adjustments",
+            description = "Periodically make random camera adjustments (looks more human)"
+    )
+    default boolean randomCameraAdjustments() {
+        return true;
+    }
+
+    @ConfigItem(
+            keyName = "cameraAdjustmentInterval",
+            name = "Camera Adjustment Interval (seconds)",
+            description = "How often to make random camera adjustments (30-120 seconds recommended)"
+    )
+    default int cameraAdjustmentInterval() {
+        return 60;
+    }
 }

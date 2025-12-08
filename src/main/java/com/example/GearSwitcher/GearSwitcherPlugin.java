@@ -19,8 +19,8 @@ import net.runelite.client.util.HotkeyListener;
 
 @PluginDescriptor(
         name = "A Gear Switcher",
-        description = "Quickly switch between magic, ranged, and melee gear setups with configurable hotkeys",
-        tags = {"gear", "switch", "combat", "pvm"},
+        description = "Dynamically highlight items depending on which attack style they're for",
+        tags = {"gear", "combat", "pvm"},
         hidden = false
 )
 public class GearSwitcherPlugin extends Plugin {

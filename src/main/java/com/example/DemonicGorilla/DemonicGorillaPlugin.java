@@ -16,7 +16,7 @@ import net.runelite.client.plugins.PluginDescriptor;
 
 @PluginDescriptor(
         name = "A Demonic Gorilla Helper",
-        description = "Automatically switches protection prayers based on demonic gorilla attack animations",
+        description = "Loud warnings when Gorillas switch prayers",
         tags = {"demonic", "gorilla", "prayer", "combat"},
         hidden = false
 )

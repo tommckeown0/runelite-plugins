@@ -24,8 +24,8 @@ import net.runelite.client.plugins.PluginDescriptor;
 import java.util.Optional;
 
 @PluginDescriptor(
-        name = "A Crashed Star Miner",
-        description = "Automatically re-clicks crashed stars when they crack and drops sapphires when inventory is full",
+        name = "A Crashed Stars",
+        description = "Crashed star helper",
         tags = {"crashed", "star", "mining", "skilling"},
         hidden = false
 )
