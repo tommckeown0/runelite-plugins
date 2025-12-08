@@ -5,6 +5,7 @@ import com.example.EthanApiPlugin.Collections.NPCs;
 import com.example.InteractionApi.HumanLikeDelay;
 import com.example.InteractionApi.HumanLikeDropper;
 import com.example.InteractionApi.NPCInteraction;
+import com.example.InteractionApi.RealisticClickHelper;
 import com.google.inject.Inject;
 import com.google.inject.Provides;
 import net.runelite.api.Client;
@@ -85,6 +86,13 @@ public class BarbarianFishingPlugin extends Plugin {
         log("=================================================");
         log("Barbarian Fishing Auto STARTED");
         log("=================================================");
+
+        // Enable coordinate logging if debug mode is on
+        RealisticClickHelper.setLoggingEnabled(config.debugLogging());
+        if (config.debugLogging()) {
+            log("Coordinate logging enabled");
+        }
+
         resetState();
     }
 
@@ -93,6 +101,10 @@ public class BarbarianFishingPlugin extends Plugin {
         log("=================================================");
         log("Barbarian Fishing Auto STOPPED");
         log("=================================================");
+
+        // Disable coordinate logging
+        RealisticClickHelper.setLoggingEnabled(false);
+
         resetState();
     }
 
@@ -229,6 +241,9 @@ public class BarbarianFishingPlugin extends Plugin {
         if (!config.enableAutoFishing()) {
             return;
         }
+
+        // Update coordinate logging if debug setting changed
+        RealisticClickHelper.setLoggingEnabled(config.debugLogging());
 
         tickCounter++;
         ticksSinceLastInteraction++;

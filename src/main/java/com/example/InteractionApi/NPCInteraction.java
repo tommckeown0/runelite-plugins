@@ -7,6 +7,7 @@ import com.example.Packets.NPCPackets;
 import net.runelite.api.NPC;
 import net.runelite.api.NPCComposition;
 
+import java.awt.Point;
 import java.util.Optional;
 import java.util.function.Predicate;
 
@@ -14,7 +15,12 @@ public class NPCInteraction {
     public static boolean interact(String name, String... actions) {
         return NPCs.search().withName(name).first().flatMap(npc ->
         {
-            MousePackets.queueClickPacket();
+            Point clickPoint = RealisticClickHelper.getNPCClickPoint(npc);
+            if (clickPoint != null) {
+                MousePackets.queueClickPacket(clickPoint.x, clickPoint.y);
+            } else {
+                MousePackets.queueClickPacket(0, 0); // Fallback
+            }
             NPCPackets.queueNPCAction(npc, actions);
             return Optional.of(true);
         }).orElse(false);
@@ -23,7 +29,12 @@ public class NPCInteraction {
     public static boolean interact(int id, String... actions) {
         return NPCs.search().withId(id).first().flatMap(npc ->
         {
-            MousePackets.queueClickPacket();
+            Point clickPoint = RealisticClickHelper.getNPCClickPoint(npc);
+            if (clickPoint != null) {
+                MousePackets.queueClickPacket(clickPoint.x, clickPoint.y);
+            } else {
+                MousePackets.queueClickPacket(0, 0); // Fallback
+            }
             NPCPackets.queueNPCAction(npc, actions);
             return Optional.of(true);
         }).orElse(false);
@@ -32,7 +43,12 @@ public class NPCInteraction {
     public static boolean interact(Predicate<? super NPC> predicate, String... actions) {
         return NPCs.search().filter(predicate).first().flatMap(npc ->
         {
-            MousePackets.queueClickPacket();
+            Point clickPoint = RealisticClickHelper.getNPCClickPoint(npc);
+            if (clickPoint != null) {
+                MousePackets.queueClickPacket(clickPoint.x, clickPoint.y);
+            } else {
+                MousePackets.queueClickPacket(0, 0); // Fallback
+            }
             NPCPackets.queueNPCAction(npc, actions);
             return Optional.of(true);
         }).orElse(false);
@@ -41,7 +57,12 @@ public class NPCInteraction {
     public static boolean interactIndex(int index, String... actions) {
         return NPCs.search().indexIs(index).first().flatMap(npc ->
         {
-            MousePackets.queueClickPacket();
+            Point clickPoint = RealisticClickHelper.getNPCClickPoint(npc);
+            if (clickPoint != null) {
+                MousePackets.queueClickPacket(clickPoint.x, clickPoint.y);
+            } else {
+                MousePackets.queueClickPacket(0, 0); // Fallback
+            }
             NPCPackets.queueNPCAction(npc, actions);
             return Optional.of(true);
         }).orElse(false);
@@ -55,7 +76,12 @@ public class NPCInteraction {
         if (comp == null) {
             return false;
         }
-        MousePackets.queueClickPacket();
+        Point clickPoint = RealisticClickHelper.getNPCClickPoint(npc);
+        if (clickPoint != null) {
+            MousePackets.queueClickPacket(clickPoint.x, clickPoint.y);
+        } else {
+            MousePackets.queueClickPacket(0, 0); // Fallback
+        }
         NPCPackets.queueNPCAction(npc, actions);
         return true;
     }

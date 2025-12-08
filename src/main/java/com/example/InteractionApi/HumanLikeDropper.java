@@ -186,7 +186,12 @@ public class HumanLikeDropper {
 
         // Queue all drops for this tick
         for (Widget item : itemsToDrop) {
-            MousePackets.queueClickPacket();
+            java.awt.Point clickPoint = RealisticClickHelper.getWidgetClickPoint(item);
+            if (clickPoint != null) {
+                MousePackets.queueClickPacket(clickPoint.x, clickPoint.y);
+            } else {
+                MousePackets.queueClickPacket(0, 0); // Fallback
+            }
             WidgetPackets.queueWidgetAction(item, "Drop");
         }
 
