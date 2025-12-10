@@ -152,6 +152,16 @@ public class RealisticClickHelper {
      * @return Point with canvas coordinates, or null if not visible
      */
     public static java.awt.Point getTileObjectClickPoint(TileObject tileObject) {
+        return getTileObjectClickPoint(tileObject, false);
+    }
+
+    /**
+     * Get a realistic click point for a TileObject, optionally rotating camera if off-screen
+     * @param tileObject The tile object to click
+     * @param rotateIfNeeded If true, will rotate camera to bring object into view
+     * @return Point with canvas coordinates, or null if not visible
+     */
+    public static java.awt.Point getTileObjectClickPoint(TileObject tileObject, boolean rotateIfNeeded) {
         if (tileObject == null) {
             log("getTileObjectClickPoint: tileObject is null");
             return null;
@@ -161,18 +171,42 @@ public class RealisticClickHelper {
 
         // Use tile polygon for TileObjects
         LocalPoint lp = tileObject.getLocalLocation();
-        if (lp != null) {
-            Polygon tilePoly = Perspective.getCanvasTilePoly(client, lp);
-            if (tilePoly != null) {
-                Rectangle bounds = tilePoly.getBounds();
-                java.awt.Point point = getRandomPointInShape(tilePoly, 0.6);
-                log(String.format("TileObject Click → (ID: %d) | Tile Poly | Bounds: [%d,%d %dx%d] | Click: (%d, %d)",
-                        objectId, bounds.x, bounds.y, bounds.width, bounds.height, point.x, point.y));
-                return point;
+        if (lp == null) {
+            log(String.format("getTileObjectClickPoint: LocalPoint is null for object (ID: %d)", objectId));
+            return null;
+        }
+
+        Polygon tilePoly = Perspective.getCanvasTilePoly(client, lp);
+        if (tilePoly != null) {
+            Rectangle bounds = tilePoly.getBounds();
+            java.awt.Point point = getRandomPointInShape(tilePoly, 0.6);
+            log(String.format("TileObject Click → (ID: %d) | Tile Poly | Bounds: [%d,%d %dx%d] | Click: (%d, %d)",
+                    objectId, bounds.x, bounds.y, bounds.width, bounds.height, point.x, point.y));
+            return point;
+        }
+
+        // tilePoly is null - try using the object's clickbox instead
+        log(String.format("getTileObjectClickPoint: Tile poly is null for object (ID: %d), trying clickbox...", objectId));
+        Shape clickbox = tileObject.getClickbox();
+        if (clickbox != null) {
+            Rectangle bounds = clickbox.getBounds();
+            java.awt.Point point = getRandomPointInShape(clickbox, 0.6);
+            log(String.format("TileObject Click → (ID: %d) | Clickbox | Bounds: [%d,%d %dx%d] | Click: (%d, %d)",
+                    objectId, bounds.x, bounds.y, bounds.width, bounds.height, point.x, point.y));
+            return point;
+        }
+
+        // TileObject is off-screen - rotate camera if requested
+        if (rotateIfNeeded && tileObject.getWorldLocation() != null) {
+            log(String.format("getTileObjectClickPoint: Object (ID: %d) is off-screen, rotating camera...", objectId));
+            if (CameraController.ensureEntityVisible(tileObject.getWorldLocation())) {
+                log("Camera rotation completed, will retry on next tick");
+                // Don't retry immediately - let the game update
+                return null;
             }
         }
 
-        log(String.format("getTileObjectClickPoint: Could not get tile poly for object (ID: %d)", objectId));
+        log(String.format("getTileObjectClickPoint: Could not get clickable area for object (ID: %d)", objectId));
         return null;
     }
 

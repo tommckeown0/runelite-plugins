@@ -146,10 +146,10 @@ public class HumanLikeDelay {
      */
     public static final Profile RESOURCE_DEPLETION = new Profile(
             "Resource Depletion (Human)",
-            new Bucket(1, 1, 40),      // 40% - quick reaction (1 tick)
-            new Bucket(2, 2, 30),      // 30% - normal reaction (2 ticks)
-            new Bucket(3, 3, 15),      // 15% - slight delay
-            new Bucket(4, 5, 8),       // 8% - distraction/slower
+            new Bucket(1, 1, 15),      // 40% - quick reaction (1 tick)
+            new Bucket(2, 2, 18),      // 30% - normal reaction (2 ticks)
+            new Bucket(3, 3, 40),      // 15% - slight delay
+            new Bucket(4, 5, 20),       // 8% - distraction/slower
             new Bucket(6, 8, 4),       // 4% - brief attention lapse
             new Bucket(9, 12, 2),      // 2% - looking elsewhere
             new Bucket(13, 20, 1)      // 1% - long tail (fatigue/multitask)
@@ -162,11 +162,17 @@ public class HumanLikeDelay {
      */
     public static final Profile INVENTORY_FULL = new Profile(
             "Inventory Full Reaction",
-            new Bucket(1, 1, 55),      // 55% - quick UI awareness
-            new Bucket(2, 2, 30),      // 30% - normal check
-            new Bucket(3, 3, 10),      // 10% - finishing action first
-            new Bucket(4, 6, 4),       // 4% - delayed notice
-            new Bucket(7, 12, 1)       // 1% - distracted
+//            new Bucket(1, 1, 55),      // 55% - quick UI awareness
+//            new Bucket(2, 2, 30),      // 30% - normal check
+//            new Bucket(3, 3, 10),      // 10% - finishing action first
+//            new Bucket(4, 6, 4),       // 4% - delayed notice
+//            new Bucket(7, 12, 1)       // 1% - distracted
+            new Bucket(1, 1, 10),
+            new Bucket(2, 2, 20),
+            new Bucket(3, 3, 40),
+            new Bucket(4, 6, 25),
+            new Bucket(7, 12, 4),
+            new Bucket(12, 19, 1)
     );
 
     /**
@@ -238,9 +244,9 @@ public class HumanLikeDelay {
      */
     public static final Profile INTERACTION_COOLDOWN = new Profile(
             "Interaction Cooldown",
-            new Bucket(1, 1, 60),      // 60% - fast rhythm
-            new Bucket(2, 2, 30),      // 30% - normal rhythm
-            new Bucket(3, 3, 8),       // 8% - slight hesitation
+            new Bucket(1, 1, 30),      // 60% - fast rhythm
+            new Bucket(2, 2, 50),      // 30% - normal rhythm
+            new Bucket(3, 3, 18),       // 8% - slight hesitation
             new Bucket(4, 6, 2)        // 2% - micro-pause
     );
 
