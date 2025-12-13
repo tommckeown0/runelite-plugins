@@ -8,8 +8,8 @@ import com.example.GearSwitcher.GearSwitcherPlugin;
 import com.example.MotherlodeMine.MotherlodeMinePlugin;
 import com.example.NewTrees.NewTreesPlugin;
 import com.example.PacketUtils.PacketUtilsPlugin;
+import com.example.Prayer.PrayerPlugin;
 import com.example.Testing.TestingPlugin;
-import com.example.YewTrees.YewTreesPlugin;
 import net.runelite.client.RuneLite;
 import net.runelite.client.externalplugins.ExternalPluginManager;
 
@@ -24,8 +24,8 @@ public class ExamplePluginTest {
                 MotherlodeMinePlugin.class,
                 TestingPlugin.class,
                 BarbarianFishingPlugin.class,
-                YewTreesPlugin.class,
-                NewTreesPlugin.class
+                NewTreesPlugin.class,
+                PrayerPlugin.class
         );
         RuneLite.main(args);
     }

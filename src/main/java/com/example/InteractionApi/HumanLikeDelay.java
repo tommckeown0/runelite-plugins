@@ -146,10 +146,10 @@ public class HumanLikeDelay {
      */
     public static final Profile RESOURCE_DEPLETION = new Profile(
             "Resource Depletion (Human)",
-            new Bucket(1, 1, 15),      // 40% - quick reaction (1 tick)
+            new Bucket(1, 1, 5),      // 40% - quick reaction (1 tick)
             new Bucket(2, 2, 18),      // 30% - normal reaction (2 ticks)
             new Bucket(3, 3, 40),      // 15% - slight delay
-            new Bucket(4, 5, 20),       // 8% - distraction/slower
+            new Bucket(4, 5, 30),       // 8% - distraction/slower
             new Bucket(6, 8, 4),       // 4% - brief attention lapse
             new Bucket(9, 12, 2),      // 2% - looking elsewhere
             new Bucket(13, 20, 1)      // 1% - long tail (fatigue/multitask)
