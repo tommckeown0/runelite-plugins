@@ -12,15 +12,35 @@ repositories {
     jcenter()
 }
 
-def runeLiteVersion = '1.12.6'
+def runeLiteVersion = '1.12.10'
+
+configurations.all {
+    resolutionStrategy {
+        force 'org.lwjgl:lwjgl:3.3.2'
+        force 'org.lwjgl:lwjgl-opengl:3.3.2'
+    }
+}
 
 dependencies {
-    compileOnly group: 'net.runelite', name: 'client', version: runeLiteVersion
+    compileOnly(group: 'net.runelite', name: 'client', version: runeLiteVersion) {
+        exclude group: 'org.lwjgl'
+    }
     compileOnly 'org.projectlombok:lombok:1.18.30'
     annotationProcessor 'org.projectlombok:lombok:1.18.30'
     testImplementation 'junit:junit:4.12'
-    testImplementation group: 'net.runelite', name: 'client', version: runeLiteVersion
-    testImplementation group: 'net.runelite', name: 'jshell', version: runeLiteVersion
+    testImplementation(group: 'net.runelite', name: 'client', version: runeLiteVersion) {
+        exclude group: 'org.lwjgl'
+    }
+    testImplementation(group: 'net.runelite', name: 'jshell', version: runeLiteVersion) {
+        exclude group: 'org.lwjgl'
+    }
+
+    // Add LWJGL dependencies with only Windows natives for testing
+    testImplementation 'org.lwjgl:lwjgl:3.3.2'
+    testImplementation 'org.lwjgl:lwjgl:3.3.2:natives-windows'
+    testImplementation 'org.lwjgl:lwjgl-opengl:3.3.2'
+    testImplementation 'org.lwjgl:lwjgl-opengl:3.3.2:natives-windows'
+
     implementation 'org.json:json:20230227'
     implementation 'org.roaringbitmap:RoaringBitmap:0.9.44'
     implementation("org.benf:cfr:0.152")
@@ -44,7 +64,7 @@ task FatJar(type: Jar) {
     manifest {
         attributes 'Main-Class': 'com.example.Main'
     }
-    baseName = 'EthanVannPlugins'
+    archiveBaseName = 'EthanVannPlugins'
     duplicatesStrategy = DuplicatesStrategy.EXCLUDE
     from { configurations.runtimeClasspath.collect { it.isDirectory() ? it : zipTree(it) } }
     exclude("com/example/hidden")
@@ -56,7 +76,7 @@ task FatJarWithHidden(type: Jar) {
     manifest {
         attributes 'Main-Class': 'com.example.Main'
     }
-    baseName = 'EthanVannPlugins'
+    archiveBaseName = 'EthanVannPlugins'
     duplicatesStrategy = DuplicatesStrategy.EXCLUDE
     from { configurations.runtimeClasspath.collect { it.isDirectory() ? it : zipTree(it) } }
     with jar
@@ -83,3 +103,11 @@ tasks.withType(JavaCompile) {
     options.encoding = 'UTF-8'
 }
 targetCompatibility = JavaVersion.VERSION_11
+
+task runPlugin(type: JavaExec) {
+    group = 'application'
+    description = 'Run RuneLite with plugins'
+    classpath = sourceSets.test.runtimeClasspath
+    mainClass = 'com.example.ExamplePluginTest'
+    jvmArgs = ['-ea']
+}

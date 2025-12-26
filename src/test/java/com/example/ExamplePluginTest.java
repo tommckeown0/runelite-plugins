@@ -4,6 +4,7 @@ import com.example.BarbarianFishing.BarbarianFishingPlugin;
 import com.example.CrashedStar.CrashedStarPlugin;
 import com.example.DemonicGorilla.DemonicGorillaPlugin;
 import com.example.EthanApiPlugin.EthanApiPlugin;
+import com.example.FreezeTimer.FreezeTimerPlugin;
 import com.example.GearSwitcher.GearSwitcherPlugin;
 import com.example.MotherlodeMine.MotherlodeMinePlugin;
 import com.example.NewTrees.NewTreesPlugin;
@@ -25,7 +26,8 @@ public class ExamplePluginTest {
                 TestingPlugin.class,
                 BarbarianFishingPlugin.class,
                 NewTreesPlugin.class,
-                PrayerPlugin.class
+                PrayerPlugin.class,
+                FreezeTimerPlugin.class
         );
         RuneLite.main(args);
     }
