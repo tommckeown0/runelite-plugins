@@ -10,6 +10,8 @@ import com.example.MotherlodeMine.MotherlodeMinePlugin;
 import com.example.NewTrees.NewTreesPlugin;
 import com.example.PacketUtils.PacketUtilsPlugin;
 import com.example.Prayer.PrayerPlugin;
+import com.example.SalamanderHunting.SalamanderHuntingPlugin;
+import com.example.Salvaging.SimpleSalvagingPlugin;
 import com.example.Testing.TestingPlugin;
 import net.runelite.client.RuneLite;
 import net.runelite.client.externalplugins.ExternalPluginManager;
@@ -27,7 +29,9 @@ public class ExamplePluginTest {
                 BarbarianFishingPlugin.class,
                 NewTreesPlugin.class,
                 PrayerPlugin.class,
-                FreezeTimerPlugin.class
+                FreezeTimerPlugin.class,
+                SimpleSalvagingPlugin.class,
+                SalamanderHuntingPlugin.class
         );
         RuneLite.main(args);
     }

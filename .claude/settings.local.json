@@ -10,7 +10,9 @@
       "WebSearch",
       "WebFetch(domain:github.com)",
       "Bash(./gradlew runPlugin:*)",
-      "Bash(curl:*)"
+      "Bash(curl:*)",
+      "WebFetch(domain:raw.githubusercontent.com)",
+      "Bash(git clone:*)"
     ],
     "deny": [],
     "ask": []

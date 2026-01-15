@@ -12,7 +12,7 @@ repositories {
     jcenter()
 }
 
-def runeLiteVersion = '1.12.10'
+def runeLiteVersion = '1.12.11'
 
 configurations.all {
     resolutionStrategy {

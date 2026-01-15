@@ -27,6 +27,7 @@ public class HumanLikeDropper {
     private boolean initialized = false;
     private final Predicate<Widget> itemFilter;
     private boolean enableLogging = false;
+    private String action = "Drop";
 
     /**
      * Create a dropper for specific item IDs
@@ -67,6 +68,16 @@ public class HumanLikeDropper {
      */
     public HumanLikeDropper setLogging(boolean enabled) {
         this.enableLogging = enabled;
+        return this;
+    }
+
+    /**
+     * Set the action to perform on items (default: "Drop")
+     * @param action The action name (e.g., "Drop", "Release", "Destroy")
+     * @return this instance for chaining
+     */
+    public HumanLikeDropper setAction(String action) {
+        this.action = action;
         return this;
     }
 
@@ -192,7 +203,7 @@ public class HumanLikeDropper {
             } else {
                 MousePackets.queueClickPacket(0, 0); // Fallback
             }
-            WidgetPackets.queueWidgetAction(item, "Drop");
+            WidgetPackets.queueWidgetAction(item, action);
         }
 
         // Log which slots are being dropped

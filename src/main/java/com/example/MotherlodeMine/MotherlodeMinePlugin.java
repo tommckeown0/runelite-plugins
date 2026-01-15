@@ -27,8 +27,8 @@ import java.util.Optional;
 import static com.example.MotherlodeMine.MotherlodeMineConstants.*;
 
 @PluginDescriptor(
-        name = "A Motherlode Mine Auto",
-        description = "Automatically mines pay-dirt deposits in Motherlode Mine with debugging overlays",
+        name = "A Motherlode Mine",
+        description = "Motherlod mine helper",
         tags = {"motherlode", "mine", "mining", "skilling", "paydirt"},
         hidden = false,
         enabledByDefault = false
