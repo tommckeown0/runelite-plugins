@@ -12,7 +12,8 @@
       "Bash(./gradlew runPlugin:*)",
       "Bash(curl:*)",
       "WebFetch(domain:raw.githubusercontent.com)",
-      "Bash(git clone:*)"
+      "Bash(git clone:*)",
+      "WebFetch(domain:static.runelite.net)"
     ],
     "deny": [],
     "ask": []

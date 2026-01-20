@@ -1,15 +1,21 @@
 package com.example;
 
+import com.example.ANewYews.ANewYewsPlugin;
 import com.example.BarbarianFishing.BarbarianFishingPlugin;
+import com.example.CookingMonkfish.CookingMonkfishPlugin;
 import com.example.CrashedStar.CrashedStarPlugin;
 import com.example.DemonicGorilla.DemonicGorillaPlugin;
 import com.example.EthanApiPlugin.EthanApiPlugin;
 import com.example.FreezeTimer.FreezeTimerPlugin;
+import com.example.GauntletFlicker.GauntletFlickerPlugin;
 import com.example.GearSwitcher.GearSwitcherPlugin;
+import com.example.GreenDhideBodies.GreenDhideBodiesPlugin;
+import com.example.Hunllef.HunllefPlugin;
 import com.example.MotherlodeMine.MotherlodeMinePlugin;
 import com.example.NewTrees.NewTreesPlugin;
 import com.example.PacketUtils.PacketUtilsPlugin;
 import com.example.Prayer.PrayerPlugin;
+import com.example.RooftopAgility.RooftopAgilityPlugin;
 import com.example.SalamanderHunting.SalamanderHuntingPlugin;
 import com.example.Salvaging.SimpleSalvagingPlugin;
 import com.example.Testing.TestingPlugin;
@@ -31,7 +37,13 @@ public class ExamplePluginTest {
                 PrayerPlugin.class,
                 FreezeTimerPlugin.class,
                 SimpleSalvagingPlugin.class,
-                SalamanderHuntingPlugin.class
+                SalamanderHuntingPlugin.class,
+                HunllefPlugin.class,
+                GauntletFlickerPlugin.class,
+                ANewYewsPlugin.class,
+                CookingMonkfishPlugin.class,
+                GreenDhideBodiesPlugin.class,
+                RooftopAgilityPlugin.class
         );
         RuneLite.main(args);
     }
