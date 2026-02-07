@@ -7,7 +7,6 @@ import com.example.CrashedStar.CrashedStarPlugin;
 import com.example.DemonicGorilla.DemonicGorillaPlugin;
 import com.example.EthanApiPlugin.EthanApiPlugin;
 import com.example.FreezeTimer.FreezeTimerPlugin;
-import com.example.GauntletFlicker.GauntletFlickerPlugin;
 import com.example.GearSwitcher.GearSwitcherPlugin;
 import com.example.GreenDhideBodies.GreenDhideBodiesPlugin;
 import com.example.Hunllef.HunllefPlugin;
@@ -39,7 +38,6 @@ public class ExamplePluginTest {
                 SimpleSalvagingPlugin.class,
                 SalamanderHuntingPlugin.class,
                 HunllefPlugin.class,
-                GauntletFlickerPlugin.class,
                 ANewYewsPlugin.class,
                 CookingMonkfishPlugin.class,
                 GreenDhideBodiesPlugin.class,
