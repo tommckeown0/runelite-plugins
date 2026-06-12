@@ -35,23 +35,34 @@ public class MousePackets{
 
     @SneakyThrows
     public static void queueClickPacket(int x, int y) {
-        long mouseHandlerMS = System.currentTimeMillis();
-        setMouseHandlerLastMillis(mouseHandlerMS);
-        long clientMS = getClientLastMillis();
-        long deltaMs = mouseHandlerMS - clientMS;
-        setClientLastMillis(mouseHandlerMS);
-        if (deltaMs < 0) {
-            deltaMs = 0L;
+        // The synthetic mouse-click packet relies on obfuscated mouse-handler fields and the
+        // EVENT_MOUSE_CLICK packet, both of which break on revision bumps. Actions now go through
+        // client.menuAction (see WidgetPackets), which does not need this click, so failures here
+        // must never propagate to callers. The anti-idle keypress is preserved separately.
+        try {
+            long mouseHandlerMS = System.currentTimeMillis();
+            setMouseHandlerLastMillis(mouseHandlerMS);
+            long clientMS = getClientLastMillis();
+            long deltaMs = mouseHandlerMS - clientMS;
+            setClientLastMillis(mouseHandlerMS);
+            if (deltaMs < 0) {
+                deltaMs = 0L;
+            }
+            if (deltaMs > 32767) {
+                deltaMs = 32767L;
+            }
+            int mouseInfo = ((int) deltaMs << 1);
+            PacketReflection.sendPacket(PacketDef.getEventMouseClick(), mouseInfo, x, y, 0);
+        } catch (Throwable ignored) {
+            // mouse-click packet path unavailable on this revision; safe to skip
         }
-        if (deltaMs > 32767) {
-            deltaMs = 32767L;
-        }
-        int mouseInfo = ((int) deltaMs << 1);
-        PacketReflection.sendPacket(PacketDef.getEventMouseClick(), mouseInfo, x, y, 0);
-        if (checkIdleLogout()) {
-            randomDelay = randomDelay();
-            Executors.newSingleThreadExecutor()
-                    .submit(MousePackets::pressKey);
+        try {
+            if (checkIdleLogout()) {
+                randomDelay = randomDelay();
+                Executors.newSingleThreadExecutor()
+                        .submit(MousePackets::pressKey);
+            }
+        } catch (Throwable ignored) {
         }
     }
 

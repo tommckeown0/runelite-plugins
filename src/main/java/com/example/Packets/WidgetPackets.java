@@ -5,6 +5,7 @@ import com.example.PacketUtils.PacketDef;
 import com.example.PacketUtils.PacketReflection;
 import lombok.SneakyThrows;
 import net.runelite.api.ItemComposition;
+import net.runelite.api.MenuAction;
 import net.runelite.api.widgets.Widget;
 import net.runelite.client.util.Text;
 
@@ -16,7 +17,12 @@ import java.util.stream.Collectors;
 public class WidgetPackets {
     @SneakyThrows
     public static void queueWidgetActionPacket(int actionFieldNo, int widgetId, int itemId, int childId) {
-        PacketReflection.sendPacket(PacketDef.getIfButtonX(), widgetId, childId, itemId, actionFieldNo & 65535);
+        // Route widget-button actions through the client's real menu-action dispatcher.
+        // This is revision-independent, unlike the obfuscated IF_BUTTONX packet whose
+        // mapping changes every game update. actionFieldNo is the 1-based op index;
+        // childId is the component/slot index (param0), widgetId is the packed id (param1).
+        MenuAction menuAction = actionFieldNo <= 5 ? MenuAction.CC_OP : MenuAction.CC_OP_LOW_PRIORITY;
+        EthanApiPlugin.getClient().menuAction(childId, widgetId, menuAction, actionFieldNo, itemId, "", "");
     }
 
     @SneakyThrows

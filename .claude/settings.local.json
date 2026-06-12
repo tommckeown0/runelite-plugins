@@ -20,7 +20,9 @@
       "Bash(git cherry-pick:*)",
       "Bash(git checkout:*)",
       "Bash(git add:*)",
-      "Bash(dir:*)"
+      "Bash(dir:*)",
+      "Bash(findstr:*)",
+      "WebFetch(domain:repo.runelite.net)"
     ],
     "deny": [],
     "ask": []
