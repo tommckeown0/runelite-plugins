@@ -517,17 +517,17 @@ public final class ObfuscatedNames {
     public static final String offsetMultiplier = "1741769013";
     public static final String indexMultiplier = "2108391709";
     public static final String addNodeGarbageValue = "-1771370198";
-    public static final String getPacketBufferNodeGarbageValue = "-2009552408";
+    public static final String getPacketBufferNodeGarbageValue = "0"; // gi.ak third param is byte; any byte-range value works
     public static final String packetWriterFieldName = "cg";
-    public static final String isaacCipherFieldName = "an";
-    public static final String addNodeMethodName = "ag";
-    public static final String clientPacketClassName = "ml";
-    public static final String packetWriterClassName = "dl";
-    public static final String classContainingGetPacketBufferNodeName = "et";
-    public static final String packetBufferNodeClassName = "mj";
-    public static final String packetBufferFieldName = "aw";
-    public static final String bufferOffsetField = "ad";
-    public static final String bufferArrayField = "az";
+    public static final String isaacCipherFieldName = "av"; // df.av is public yk (ISAAC cipher)
+    public static final String addNodeMethodName = "az"; // df.az(jm, int) is the addNode method
+    public static final String clientPacketClassName = "jb"; // jb holds all static packet fields (jb.ao = OPNPC1 etc.)
+    public static final String packetWriterClassName = "jm"; // df.az first param is jm; used by auto-detection filter
+    public static final String classContainingGetPacketBufferNodeName = "gi"; // gi.ak(jb, yk, byte) builds the packet buffer
+    public static final String packetBufferNodeClassName = "jm"; // gi.ak returns jm
+    public static final String packetBufferFieldName = "ay"; // jm.ay is public xj (extends xi/PacketBuffer)
+    public static final String bufferOffsetField = "au"; // xi.au is public int (offset)
+    public static final String bufferArrayField = "al"; // xi.al is public byte[] (array)
     public static final String MouseHandler_lastPressedTimeMillisClass = "bp";
     public static final String MouseHandler_lastPressedTimeMillisField = "au";
     public static final String clientMillisField = "jn";

@@ -41,7 +41,7 @@ import java.util.Optional;
         hidden = false,
         enabledByDefault = false
 )
-public class PrayerPlugin extends Plugin {
+public class PrayerTrainingPlugin extends Plugin {
 
     private static final DateTimeFormatter FORMATTER =
             DateTimeFormatter.ofPattern("yyyy-MM-dd HH:mm:ss");

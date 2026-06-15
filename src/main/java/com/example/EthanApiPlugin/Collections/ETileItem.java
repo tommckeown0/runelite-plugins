@@ -1,7 +1,6 @@
 package com.example.EthanApiPlugin.Collections;
 
-import com.example.Packets.MousePackets;
-import com.example.Packets.TileItemPackets;
+import com.example.InteractionApi.MenuActionInteractions;
 import net.runelite.api.TileItem;
 import net.runelite.api.coords.WorldPoint;
 import static net.runelite.api.TileItem.OWNERSHIP_GROUP;
@@ -28,7 +27,8 @@ public class ETileItem {
     }
 
     public void interact(boolean ctrlDown) {
-        MousePackets.queueClickPacket();
-        TileItemPackets.queueTileItemAction(this, ctrlDown);
+        // ctrlDown is irrelevant for "Take"; routed via the rev-238-verified menuAction path
+        // instead of the broken obfuscated TileItemPackets raw-packet path (see CLAUDE.md).
+        MenuActionInteractions.takeGroundItem(this);
     }
 }
