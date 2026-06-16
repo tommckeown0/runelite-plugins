@@ -9,15 +9,47 @@ import net.runelite.client.config.Range;
 public interface SlayerCombatConfig extends Config {
 
     enum Monster {
-        KURASK(410, "Attack");
+        KURASK(new int[]{410}, "Attack", false),
+        // Mountain troll (lvl 69) has several ids; lvl 71 is 4143. Killed with a cannon,
+        // so cannonMode = true (no manual attacking — auto-retaliate does the fighting).
+        MOUNTAIN_TROLL(new int[]{936, 937, 938, 939, 940, 941, 942, 4143}, "Attack", true);
 
-        public final int npcId;
+        public final int[] npcIds;
         public final String attackAction;
+        public final boolean cannonMode;
 
-        Monster(int npcId, String attackAction) {
-            this.npcId = npcId;
+        Monster(int[] npcIds, String attackAction, boolean cannonMode) {
+            this.npcIds = npcIds;
             this.attackAction = attackAction;
+            this.cannonMode = cannonMode;
         }
+
+        public java.util.List<Integer> npcIdList() {
+            java.util.List<Integer> ids = new java.util.ArrayList<>();
+            for (int id : npcIds) {
+                ids.add(id);
+            }
+            return ids;
+        }
+
+        public boolean matchesId(int id) {
+            for (int n : npcIds) {
+                if (n == id) {
+                    return true;
+                }
+            }
+            return false;
+        }
+    }
+
+    /**
+     * How to decide whether cannon mode is active. AUTO follows the selected monster's database
+     * flag (e.g. Mountain troll = on, Kurask = off); ON/OFF force it regardless.
+     */
+    enum CannonControl {
+        AUTO,
+        ON,
+        OFF
     }
 
     @ConfigItem(
@@ -104,6 +136,65 @@ public interface SlayerCombatConfig extends Config {
     )
     default String lootBlacklist() {
         return "";
+    }
+
+    // ---- Cannon mode ----
+
+    @ConfigItem(
+        keyName = "cannonControl",
+        name = "Cannon Mode",
+        description = "AUTO follows the selected monster (Mountain troll = on, Kurask = off). "
+                + "ON/OFF force cannon mode regardless of monster."
+    )
+    default CannonControl cannonControl() {
+        return CannonControl.AUTO;
+    }
+
+    @ConfigItem(
+        keyName = "cannonSetupX",
+        name = "Cannon Setup X",
+        description = "X tile to stand on to set up the cannon (cannon mode). Default is the Mountain troll spot."
+    )
+    default int cannonSetupX() {
+        return 1241;
+    }
+
+    @ConfigItem(
+        keyName = "cannonSetupY",
+        name = "Cannon Setup Y",
+        description = "Y tile to stand on to set up the cannon (cannon mode)."
+    )
+    default int cannonSetupY() {
+        return 3517;
+    }
+
+    @ConfigItem(
+        keyName = "cannonFightX",
+        name = "Fight Tile X",
+        description = "X tile to stand on while the cannon aggros monsters to you (cannon mode)."
+    )
+    default int cannonFightX() {
+        return 1241;
+    }
+
+    @ConfigItem(
+        keyName = "cannonFightY",
+        name = "Fight Tile Y",
+        description = "Y tile to stand on while the cannon aggros monsters to you (cannon mode)."
+    )
+    default int cannonFightY() {
+        return 3518;
+    }
+
+    @Range(min = 0, max = 60)
+    @ConfigItem(
+        keyName = "cannonballThreshold",
+        name = "Refill Below",
+        description = "Click 'Fire' on the cannon to refill when the loaded cannonball count drops below this "
+                + "(read from the built-in Cannon plugin, which must be enabled)."
+    )
+    default int cannonballThreshold() {
+        return 10;
     }
 
     @ConfigItem(

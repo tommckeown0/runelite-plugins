@@ -72,20 +72,23 @@ public final class ObfuscatedNames {
             {"v"},
             {"v"},
     };
-    public static final String MOVE_GAMECLICK_OBFUSCATEDNAME = "ca";
+    // rev238: move packet is jb.eo, built as ea(5), ek(packed dest), bq(ctrl) — verified by
+    // sniffing real walk packets. Payload byte order: [5][worldY low][worldY high][worldX high]
+    // [worldX low][ctrl], all plain (no +128 offsets). World coords, not scene.
+    public static final String MOVE_GAMECLICK_OBFUSCATEDNAME = "eo";
     public static final String MOVE_GAMECLICK_WRITE1 = "5";
-    public static final String MOVE_GAMECLICK_METHOD_NAME1 = "cu";
-    public static final String MOVE_GAMECLICK_WRITE2 = "ctrlDown";
-    public static final String MOVE_GAMECLICK_METHOD_NAME2 = "es";
-    public static final String MOVE_GAMECLICK_WRITE3 = "worldPointY";
-    public static final String MOVE_GAMECLICK_METHOD_NAME3 = "ep";
-    public static final String MOVE_GAMECLICK_WRITE4 = "worldPointX";
-    public static final String MOVE_GAMECLICK_METHOD_NAME4 = "ep";
+    public static final String MOVE_GAMECLICK_METHOD_NAME1 = "ea";
+    public static final String MOVE_GAMECLICK_WRITE2 = "worldPointY";
+    public static final String MOVE_GAMECLICK_METHOD_NAME2 = "ek";
+    public static final String MOVE_GAMECLICK_WRITE3 = "worldPointX";
+    public static final String MOVE_GAMECLICK_METHOD_NAME3 = "ek";
+    public static final String MOVE_GAMECLICK_WRITE4 = "ctrlDown";
+    public static final String MOVE_GAMECLICK_METHOD_NAME4 = "bq";
     public static final String[][] MOVE_GAMECLICK_WRITES = new String[][]{
-            {"v"},
-            {"s 128"},
-            {"a 128", "r 8"},
-            {"a 128", "r 8"},
+            {"v"},              // constant 5
+            {"v", "r 8"},       // worldY little-endian: low byte then high byte
+            {"r 8", "v"},       // worldX big-endian: high byte then low byte
+            {"v"},              // ctrl/run flag
     };
 
     public static final String OPLOC1_OBFUSCATEDNAME = "dm";
@@ -514,11 +517,11 @@ public final class ObfuscatedNames {
             {"strn"},
     };
 
-    public static final String offsetMultiplier = "1741769013";
-    public static final String indexMultiplier = "2108391709";
+    public static final String offsetMultiplier = "228932457";  // rev238: xi.ea does au += 228932457
+    public static final String indexMultiplier = "-661977895";  // rev238: index = au * -661977895 - 1
     public static final String addNodeGarbageValue = "-1771370198";
     public static final String getPacketBufferNodeGarbageValue = "0"; // gi.ak third param is byte; any byte-range value works
-    public static final String packetWriterFieldName = "cg";
+    public static final String packetWriterFieldName = "aq"; // rev238: client.aq is the df packet writer (was "cg", which is now a static long)
     public static final String isaacCipherFieldName = "av"; // df.av is public yk (ISAAC cipher)
     public static final String addNodeMethodName = "az"; // df.az(jm, int) is the addNode method
     public static final String clientPacketClassName = "jb"; // jb holds all static packet fields (jb.ao = OPNPC1 etc.)

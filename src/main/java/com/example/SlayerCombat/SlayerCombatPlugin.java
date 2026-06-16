@@ -3,6 +3,7 @@ package com.example.SlayerCombat;
 import com.example.EthanApiPlugin.Collections.ETileItem;
 import com.example.EthanApiPlugin.Collections.NPCs;
 import com.example.EthanApiPlugin.Collections.TileItems;
+import com.example.EthanApiPlugin.Collections.TileObjects;
 import com.example.EthanApiPlugin.Collections.query.NPCQuery;
 import com.example.InteractionApi.InventoryInteraction;
 import com.example.InteractionApi.MenuActionInteractions;
@@ -16,6 +17,8 @@ import net.runelite.api.NPCComposition;
 import net.runelite.api.Player;
 import net.runelite.api.Skill;
 import net.runelite.api.TileItem;
+import net.runelite.api.TileObject;
+import net.runelite.api.coords.WorldPoint;
 import net.runelite.api.events.GameTick;
 import net.runelite.client.config.ConfigManager;
 import net.runelite.client.eventbus.Subscribe;
@@ -50,6 +53,10 @@ public class SlayerCombatPlugin extends Plugin {
 
     // Prayer potion item IDs (4-dose through 1-dose)
     private static final Set<Integer> PRAYER_POTION_IDS = Set.of(2434, 139, 141, 143);
+
+    // Cannon mode: names the assembled cannon object and the inventory part we "Set-up".
+    private static final String CANNON_OBJECT_NAME = "Dwarven multicannon";
+    private static final String CANNON_BASE_NAME = "Cannon base";
 
     @Provides
     SlayerCombatConfig provideConfig(ConfigManager configManager) {
@@ -97,6 +104,13 @@ public class SlayerCombatPlugin extends Plugin {
             return;
         }
 
+        // Cannon mode (e.g. Mountain trolls): manage the cannon + positioning + looting only.
+        // We never manually attack — auto-retaliate does the fighting.
+        if (cannonModeActive()) {
+            cannonModeTick();
+            return;
+        }
+
         if (isInCombat()) {
             return;
         }
@@ -111,6 +125,87 @@ public class SlayerCombatPlugin extends Plugin {
 
         attackNearestTarget();
         tickDelay = 3; // always wait 3 ticks after an attack attempt, whether or not a target was found
+    }
+
+    /**
+     * Whether cannon mode is active: the config control overrides the selected monster's database
+     * flag (AUTO follows the monster, ON/OFF force it).
+     */
+    private boolean cannonModeActive() {
+        switch (config.cannonControl()) {
+            case ON:
+                return true;
+            case OFF:
+                return false;
+            default:
+                return config.monster().cannonMode;
+        }
+    }
+
+    /**
+     * Cannon-mode loop (Mountain trolls): keep a Dwarven multicannon set up and fed, stand on the
+     * fight tile so the cannon aggros monsters onto us, and loot when it's safe. No manual
+     * attacking — auto-retaliate handles the kills.
+     */
+    private void cannonModeTick() {
+        SlayerCombatConfig.Monster monster = config.monster();
+        WorldPoint setupTile = new WorldPoint(config.cannonSetupX(), config.cannonSetupY(), client.getPlane());
+        WorldPoint fightTile = new WorldPoint(config.cannonFightX(), config.cannonFightY(), client.getPlane());
+        WorldPoint pos = client.getLocalPlayer().getWorldLocation();
+
+        // 1. Locate our assembled cannon (it's the only object offering "Fire").
+        Optional<TileObject> cannon = TileObjects.search()
+                .withName(CANNON_OBJECT_NAME)
+                .withAction("Fire")
+                .nearestToPlayer();
+
+        // 2. No cannon up yet → get on the setup tile and "Set-up" the base from the inventory.
+        if (!cannon.isPresent()) {
+            if (!pos.equals(setupTile)) {
+                log("Cannon not placed; walking to setup tile " + setupTile);
+                MenuActionInteractions.walkTo(setupTile);
+                tickDelay = 2;
+                return;
+            }
+            log("On setup tile; setting up cannon base");
+            if (InventoryInteraction.useItem(CANNON_BASE_NAME, "Set-up")) {
+                // Assembling + auto-filling takes a few seconds; don't poke it meanwhile.
+                tickDelay = 8;
+            } else {
+                log("No '" + CANNON_BASE_NAME + "' with a 'Set-up' action in inventory");
+            }
+            return;
+        }
+
+        // 3. Refill when the loaded count is low. 'Fire' on the cannon tops it up from inventory.
+        int balls = CannonTracker.cballsLeft();
+        if (balls < 0) {
+            log("Cannonball count unavailable — is the built-in Cannon plugin enabled? fields=["
+                    + CannonTracker.describeFields() + "]");
+        } else if (balls < config.cannonballThreshold()) {
+            log("Cannonballs low (" + balls + " < " + config.cannonballThreshold() + "); firing/refilling");
+            if (MenuActionInteractions.interactObject(cannon.get(), "Fire")) {
+                tickDelay = 2;
+            }
+            return;
+        }
+
+        // 4. Get back onto the fight tile if we've drifted (e.g. after looting), but don't
+        //    reposition mid-fight — let auto-retaliate keep working.
+        if (!pos.equals(fightTile) && !isInCombat()) {
+            log("Returning to fight tile " + fightTile);
+            MenuActionInteractions.walkTo(fightTile);
+            tickDelay = 2;
+            return;
+        }
+
+        // 5. Loot valuable drops when we're not actively being hit.
+        if (config.enableLooting() && !isInCombat() && lootNearestValuable()) {
+            tickDelay = 2;
+            return;
+        }
+
+        // Otherwise idle on the fight tile and let the cannon + auto-retaliate do the work.
     }
 
     /**
@@ -188,7 +283,7 @@ public class SlayerCombatPlugin extends Plugin {
         }
         NPC npc = (NPC) interacting;
         // healthRatio == 0 means dead; -1 means no health bar shown (untouched NPC, still alive)
-        return npc.getId() == config.monster().npcId && npc.getHealthRatio() != 0;
+        return config.monster().matchesId(npc.getId()) && npc.getHealthRatio() != 0;
     }
 
     private void attackNearestTarget() {
@@ -199,20 +294,20 @@ public class SlayerCombatPlugin extends Plugin {
         // adjacent/reachable, and locking onto it stops us thrashing toward a different
         // (possibly unreachable) NPC while one is already on us. Fall back to nearest.
         Optional<NPC> target = NPCs.search()
-                .withId(monster.npcId)
+                .idInList(monster.npcIdList())
                 .alive()
                 .filter(npc -> npc.getInteracting() == local)
                 .nearestToPlayer();
 
         if (!target.isPresent()) {
             target = NPCs.search()
-                    .withId(monster.npcId)
+                    .idInList(monster.npcIdList())
                     .alive()
                     .nearestToPlayer();
         }
 
         if (!target.isPresent()) {
-            log("No alive target with id " + monster.npcId + " found nearby");
+            log("No alive target with id in " + monster.npcIdList() + " found nearby");
             return;
         }
 

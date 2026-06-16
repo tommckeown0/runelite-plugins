@@ -12,6 +12,7 @@ import com.example.GreenDhideBodies.GreenDhideBodiesPlugin;
 import com.example.Hunllef.HunllefPlugin;
 import com.example.MotherlodeMine.MotherlodeMinePlugin;
 import com.example.NewTrees.NewTreesPlugin;
+import com.example.PacketSniffer.PacketSnifferPlugin;
 import com.example.PacketUtils.PacketUtilsPlugin;
 import com.example.Prayer.PrayerTrainingPlugin;
 import com.example.RooftopAgility.RooftopAgilityPlugin;
@@ -19,6 +20,7 @@ import com.example.SalamanderHunting.SalamanderHuntingPlugin;
 import com.example.Salvaging.SimpleSalvagingPlugin;
 import com.example.SlayerCombat.SlayerCombatPlugin;
 import com.example.Testing.TestingPlugin;
+import com.example.TileCoordinates.TileCoordinatesPlugin;
 import net.runelite.client.RuneLite;
 import net.runelite.client.externalplugins.ExternalPluginManager;
 
@@ -43,7 +45,9 @@ public class ExamplePluginTest {
                 CookingMonkfishPlugin.class,
                 GreenDhideBodiesPlugin.class,
                 RooftopAgilityPlugin.class,
-                SlayerCombatPlugin.class
+                SlayerCombatPlugin.class,
+                TileCoordinatesPlugin.class,
+                PacketSnifferPlugin.class
         );
         RuneLite.main(args);
     }

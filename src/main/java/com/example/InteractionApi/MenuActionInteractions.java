@@ -2,13 +2,19 @@ package com.example.InteractionApi;
 
 import com.example.EthanApiPlugin.Collections.ETileItem;
 import com.example.EthanApiPlugin.Collections.query.NPCQuery;
+import com.example.EthanApiPlugin.Collections.query.TileObjectQuery;
+import com.example.Packets.MousePackets;
+import com.example.Packets.MovementPackets;
 import net.runelite.api.Client;
 import net.runelite.api.MenuAction;
 import net.runelite.api.NPC;
 import net.runelite.api.NPCComposition;
+import net.runelite.api.ObjectComposition;
 import net.runelite.api.Player;
 import net.runelite.api.TileItem;
+import net.runelite.api.TileObject;
 import net.runelite.api.coords.LocalPoint;
+import net.runelite.api.coords.WorldPoint;
 import net.runelite.client.RuneLite;
 
 /**
@@ -116,6 +122,84 @@ public final class MenuActionInteractions {
         TileItem tileItem = item.getTileItem();
         client.menuAction(lp.getSceneX(), lp.getSceneY(), MenuAction.GROUND_ITEM_THIRD_OPTION,
                 tileItem.getId(), -1, "Take", "");
+        return true;
+    }
+
+    /**
+     * Returns the 1-based menu option index of {@code action} on this object (matching the
+     * game's own op order), or -1 if the object does not offer that action. Reads the
+     * transformed composition (impostor) so it is correct for objects that change form.
+     */
+    public static int objectOptionIndex(TileObject obj, String action) {
+        if (obj == null || action == null) {
+            return -1;
+        }
+        ObjectComposition comp = TileObjectQuery.getObjectComposition(obj);
+        String[] actions = comp != null ? comp.getActions() : null;
+        if (actions == null) {
+            return -1;
+        }
+        for (int i = 0; i < actions.length; i++) {
+            if (actions[i] != null && actions[i].equalsIgnoreCase(action)) {
+                return i + 1;
+            }
+        }
+        return -1;
+    }
+
+    /** Maps a 1-based object option index to the matching GAME_OBJECT_*_OPTION MenuAction. */
+    public static MenuAction objectOptionMenuAction(int oneBasedIndex) {
+        switch (oneBasedIndex) {
+            case 1: return MenuAction.GAME_OBJECT_FIRST_OPTION;
+            case 2: return MenuAction.GAME_OBJECT_SECOND_OPTION;
+            case 3: return MenuAction.GAME_OBJECT_THIRD_OPTION;
+            case 4: return MenuAction.GAME_OBJECT_FOURTH_OPTION;
+            default: return MenuAction.GAME_OBJECT_FIFTH_OPTION;
+        }
+    }
+
+    /**
+     * Performs a world-object menu action (e.g. "Fire", "Set-up") via menuAction, resolving the
+     * correct option index automatically. param0/param1 are the scene X/Y of the object's
+     * (south-west) world tile — mirroring the world-point the old {@code ObjectPackets} path
+     * used to identify the object. Returns false if the object does not offer the action or its
+     * tile is off the loaded scene.
+     */
+    public static boolean interactObject(TileObject obj, String action) {
+        int index = objectOptionIndex(obj, action);
+        if (index < 1 || index > 5) {
+            return false;
+        }
+        Client client = client();
+        LocalPoint lp = LocalPoint.fromWorld(client, obj.getWorldLocation());
+        if (lp == null) {
+            return false;
+        }
+        ObjectComposition comp = TileObjectQuery.getObjectComposition(obj);
+        String name = comp != null && comp.getName() != null ? comp.getName() : "";
+        client.menuAction(lp.getSceneX(), lp.getSceneY(), objectOptionMenuAction(index),
+                obj.getId(), -1, action, name);
+        return true;
+    }
+
+    /**
+     * Walks the local player to the given world tile. Unlike the other helpers here this is NOT a
+     * menuAction: {@code client.menuAction(.., MenuAction.WALK, ..)} is useless for scripted walking
+     * because the rev-238 WALK op (id 23) ignores param0/param1 and just walks to the tile the
+     * client already had selected (verified in the injected client's {@code qd.fa}/{@code ev.cf}).
+     * So walking genuinely needs the raw move packet — the same path the repo's other walking
+     * plugins use. Returns false if the tile is off the loaded scene.
+     */
+    public static boolean walkTo(WorldPoint wp) {
+        if (wp == null) {
+            return false;
+        }
+        if (LocalPoint.fromWorld(client(), wp) == null) {
+            return false; // destination not on the loaded scene
+        }
+        // rev238: MOVE_GAMECLICK is jb.eo (verified by packet sniffing — see ObfuscatedNames).
+        MousePackets.queueClickPacket();
+        MovementPackets.queueMovement(wp);
         return true;
     }
 

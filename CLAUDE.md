@@ -33,3 +33,6 @@ Pick FIRST/SECOND/THIRD by the op index the helper resolves; verify param0/param
 Injected client jar: `~/.runelite/PacketUtils/injected-1.12.28.jar`; disassemble with JDK-11 `javap -c -p`. menuAction dispatcher is `client.uo(int x6, String x2, int x2)`. Packet builder is `gi.ak(jb, yk, byte)`; addNode is `df.az`; buffer write methods live on `xi` (et=4-byte middle-endian int, ba/ca=+128 shorts, cx=byte); buffer offset/array fields `xi.au`/`xi.al`; offsetMultiplier 228932457 / indexMultiplier -661977895.
 
 Once NPC/object/ground-item interactions are migrated, the whole `Packets`/`PacketReflection`/`ObfuscatedNames` layer can be deleted.
+
+## Some other notes
+I name the plugins with 'A' at the start of the name so they appear at the top of the plugin list in Runelite
