@@ -17,10 +17,17 @@ Game client is on **rev 238**. The obfuscated packet path (`Packets/PacketReflec
 - **Done (works):** all widget-button actions. `WidgetPackets.queueWidgetActionPacket` routes to
   `client.menuAction(childId, widgetId, op<=5?CC_OP:CC_OP_LOW_PRIORITY, op, itemId, "", "")`.
   Covers gear equip, prayers (`PrayerInteraction`), bank, GE, trade, sailing, agility buttons.
-- `MousePackets.queueClickPacket` is now a guarded no-op (its rev-specific reflection can't break callers; menuAction doesn't need the synthetic click).
-- **TODO (breaks when used):** NPC / world-object / ground-item interactions still call
-  `PacketReflection.sendPacket(OPNPC/OPLOC/OPOBJ...)` in `InteractionApi/NPCInteraction`,
-  `TileObjectInteraction`, and the tile-item helpers.
+- **Done (works):** NPC / world-object / ground-item interactions, via `InteractionApi/MenuActionInteractions.java` (`interactNpc`, `interactObject`, `takeGroundItem` — resolve the op index from the composition, don't hardcode FIRST_OPTION). New plugins should call these, not `TileObjectInteraction`/`NPCInteraction` (which still use the dead `PacketReflection.sendPacket` path).
+- `MousePackets.queueClickPacket` is a guarded no-op.
+- **Walking has no menuAction equivalent** — `MenuAction.WALK` (id 23) ignores param0/param1. So walking uses the *raw* move packet, which is now fixed on rev238 (see below). `MenuActionInteractions.walkTo(WorldPoint)` → `MousePackets.queueClickPacket()` + `MovementPackets.queueMovement(wp)`.
+
+## The raw packet layer was REVIVED on rev238 (movement works)
+The `PacketReflection`/`ObfuscatedNames` layer was fully broken but is now functional. Three stale values were fixed (they chained — each crash hid the next bug):
+1. `packetWriterFieldName` `"cg"` → `"aq"` (rev238 `client.cg` is a `static long`; the `df` packet writer is `client.aq`).
+2. `MOVE_GAMECLICK` opcode `"ca"` → `"eo"` (`jb.ca` was an interaction packet). `jb.eo` payload (WORLD coords, no +128): `[5][worldY LE][worldX BE][ctrl]`. Writes reordered accordingly.
+3. `offsetMultiplier`/`indexMultiplier` `1741769013`/`2108391709` → `228932457`/`-661977895` (from `xi.ea`: `au += 228932457; index = au*-661977895 - 1`). Wrong values → `ArrayIndexOutOfBoundsException` in `BufferMethods`.
+
+These were found with the **`A Packet Sniffer (diagnostic)`** plugin (`src/main/java/com/example/PacketSniffer/`) — reads the client's outgoing packets reflectively (queue `df.ak` of `jm` nodes, each with `jm.ah`=its `jb` def for naming + `jm.ay.al`=bytes; and output buffer `df.az`). Keep it for future packet RE, or delete once movement is confirmed. So raw packets ARE viable again when there's no menuAction equivalent — but menuAction is still preferred for interactions.
 
 ## Recipe to fix a broken interaction
 Replace the `sendPacket(...)` call in the helper with `client.menuAction(...)`; the existing packet args already hold the right values, just map them across:

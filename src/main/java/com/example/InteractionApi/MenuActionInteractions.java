@@ -6,11 +6,13 @@ import com.example.EthanApiPlugin.Collections.query.TileObjectQuery;
 import com.example.Packets.MousePackets;
 import com.example.Packets.MovementPackets;
 import net.runelite.api.Client;
+import net.runelite.api.GameObject;
 import net.runelite.api.MenuAction;
 import net.runelite.api.NPC;
 import net.runelite.api.NPCComposition;
 import net.runelite.api.ObjectComposition;
 import net.runelite.api.Player;
+import net.runelite.api.Point;
 import net.runelite.api.TileItem;
 import net.runelite.api.TileObject;
 import net.runelite.api.coords.LocalPoint;
@@ -170,14 +172,53 @@ public final class MenuActionInteractions {
         if (index < 1 || index > 5) {
             return false;
         }
-        Client client = client();
-        LocalPoint lp = LocalPoint.fromWorld(client, obj.getWorldLocation());
-        if (lp == null) {
+        int[] scene = objectSceneCoords(obj);
+        if (scene == null) {
             return false;
         }
         ObjectComposition comp = TileObjectQuery.getObjectComposition(obj);
         String name = comp != null && comp.getName() != null ? comp.getName() : "";
-        client.menuAction(lp.getSceneX(), lp.getSceneY(), objectOptionMenuAction(index),
+        client().menuAction(scene[0], scene[1], objectOptionMenuAction(index),
+                obj.getId(), -1, action, name);
+        return true;
+    }
+
+    /**
+     * Scene (x,y) tile the engine indexes this object by, for menuAction param0/param1. For a
+     * multi-tile {@link GameObject} this is its south-west base tile ({@code getSceneMinLocation});
+     * deriving it from {@code getWorldLocation()} instead returns the object's CENTRE tile, which for
+     * a 2x2 object (e.g. the Dwarf multicannon) is off by one and makes the op miss. Falls back to
+     * the world tile for 1x1 ground/wall/decorative objects. Returns null if off the loaded scene.
+     */
+    private static int[] objectSceneCoords(TileObject obj) {
+        if (obj instanceof GameObject) {
+            Point min = ((GameObject) obj).getSceneMinLocation();
+            if (min != null) {
+                return new int[]{min.getX(), min.getY()};
+            }
+        }
+        LocalPoint lp = LocalPoint.fromWorld(client(), obj.getWorldLocation());
+        return lp == null ? null : new int[]{lp.getSceneX(), lp.getSceneY()};
+    }
+
+    /**
+     * Dispatches an explicit 1-based object option (GAME_OBJECT_*_OPTION) via menuAction, without
+     * resolving the action from the composition. Use this when the action you need isn't present on
+     * the static {@code ObjectComposition} (e.g. an owned Dwarven multicannon's "Fire" option, which
+     * the game adds dynamically for the owner). {@code action} is only the menu string. Returns false
+     * if the object's tile is off the loaded scene.
+     */
+    public static boolean interactObjectOption(TileObject obj, int oneBasedIndex, String action) {
+        if (obj == null || oneBasedIndex < 1 || oneBasedIndex > 5) {
+            return false;
+        }
+        int[] scene = objectSceneCoords(obj);
+        if (scene == null) {
+            return false;
+        }
+        ObjectComposition comp = TileObjectQuery.getObjectComposition(obj);
+        String name = comp != null && comp.getName() != null ? comp.getName() : "";
+        client().menuAction(scene[0], scene[1], objectOptionMenuAction(oneBasedIndex),
                 obj.getId(), -1, action, name);
         return true;
     }
