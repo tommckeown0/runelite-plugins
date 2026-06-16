@@ -9,6 +9,7 @@ import com.example.EthanApiPlugin.Collections.query.NPCQuery;
 import com.example.EthanApiPlugin.Collections.query.TileObjectQuery;
 import com.example.InteractionApi.InventoryInteraction;
 import com.example.InteractionApi.MenuActionInteractions;
+import com.example.InteractionApi.PrayerInteraction;
 import com.google.inject.Inject;
 import com.google.inject.Provides;
 import net.runelite.api.Actor;
@@ -79,6 +80,15 @@ public class SlayerCombatPlugin extends Plugin {
     // cleared once we've fired the placed cannon.
     private boolean pendingInitialFire = false;
 
+    // Stalled-cannon detection: a cannon stops firing on its own after ~30 min and must be re-Fired.
+    // We track the last loaded count and the tick it last changed; if it stays flat too long while a
+    // target is in range, the cannon has gone idle and we re-Fire it.
+    private int lastBallCount = -1;
+    private int lastBallChangeTick = 0;
+    // Dwarf multicannon firing radius is ~5 tiles; use a slightly generous range to spot targets.
+    private static final int CANNON_RANGE = 7;
+    private static final double TICK_SECONDS = 0.6;
+
     @Provides
     SlayerCombatConfig provideConfig(ConfigManager configManager) {
         return configManager.getConfig(SlayerCombatConfig.class);
@@ -91,6 +101,8 @@ public class SlayerCombatPlugin extends Plugin {
         loggedNoCannonballs = false;
         loggedCannonActions = false;
         pendingInitialFire = false;
+        lastBallCount = -1;
+        lastBallChangeTick = 0;
         log("SlayerCombat started");
     }
 
@@ -102,7 +114,7 @@ public class SlayerCombatPlugin extends Plugin {
 
     @Subscribe
     public void onGameTick(GameTick event) {
-        if (!config.enabled() || client.getGameState() != GameState.LOGGED_IN) {
+        if (client.getGameState() != GameState.LOGGED_IN) {
             return;
         }
 
@@ -110,6 +122,11 @@ public class SlayerCombatPlugin extends Plugin {
             tickDelay--;
             return;
         }
+
+        // Keep the monster's protection prayer up (applies in both cannon and normal mode).
+        // setPrayerState is a no-op when the prayer is already in the desired state, so this is
+        // cheap to call every tick and doesn't interfere with the rest of the loop.
+        maintainProtectionPrayer();
 
         if (config.enablePrayerPots()) {
             int currentPrayer = client.getBoostedSkillLevel(Skill.PRAYER);
@@ -153,6 +170,24 @@ public class SlayerCombatPlugin extends Plugin {
     }
 
     /**
+     * Ensures the selected monster's protection prayer is active when the toggle is on. Does nothing
+     * if the feature is off or the monster has no protection prayer defined.
+     */
+    private void maintainProtectionPrayer() {
+        if (!config.enableProtectionPrayer()) {
+            return;
+        }
+        net.runelite.api.Prayer prayer = config.monster().protectionPrayer;
+        if (prayer == null) {
+            return;
+        }
+        if (!client.isPrayerActive(prayer)) {
+            log("Activating protection prayer " + prayer);
+            PrayerInteraction.setPrayerState(prayer, true);
+        }
+    }
+
+    /**
      * Whether cannon mode is active: the config control overrides the selected monster's database
      * flag (AUTO follows the monster, ON/OFF force it).
      */
@@ -173,8 +208,9 @@ public class SlayerCombatPlugin extends Plugin {
      * attacking — auto-retaliate handles the kills.
      */
     private void cannonModeTick() {
-        WorldPoint setupTile = new WorldPoint(config.cannonSetupX(), config.cannonSetupY(), client.getPlane());
-        WorldPoint fightTile = new WorldPoint(config.cannonFightX(), config.cannonFightY(), client.getPlane());
+        SlayerCombatConfig.Monster monster = config.monster();
+        WorldPoint setupTile = new WorldPoint(monster.cannonSetupX, monster.cannonSetupY, client.getPlane());
+        WorldPoint fightTile = new WorldPoint(monster.cannonFightX, monster.cannonFightY, client.getPlane());
         WorldPoint pos = client.getLocalPlayer().getWorldLocation();
 
         // Locate our assembled cannon by object id (DWARF_MULTICANNON1). Don't filter on the "Fire"
@@ -226,6 +262,13 @@ public class SlayerCombatPlugin extends Plugin {
         //         + "); loaded=" + balls + " threshold=" + config.cannonballThreshold()
         //         + (pendingInitialFire ? " [pending initial Fire]" : ""));
 
+        // Track when the loaded count last changed — used by the stalled-cannon restart below. A
+        // refill (count jumps up) and a shot (count drops) both count as activity.
+        if (balls != lastBallCount) {
+            lastBallCount = balls;
+            lastBallChangeTick = client.getTickCount();
+        }
+
         // 2a. Just set up: the cannon assembles, then AUTO-FILLS from inventory, then sits idle until
         //     Fired once to begin. We must wait for the auto-fill (loaded > 0) before that start
         //     Fire — firing at loaded=0 (mid-assembly/pre-fill) is ignored by the game, which is why
@@ -268,6 +311,22 @@ public class SlayerCombatPlugin extends Plugin {
             loggedNoCannonballs = false;
         }
 
+        // 2b. Stalled-cannon restart. A Dwarf cannon stops firing on its own after ~30 min; the loaded
+        //     count then sits flat. If it hasn't moved for the configured time AND there's a target in
+        //     cannon range (so we don't spuriously click during a genuine lull), re-Fire to restart.
+        if (config.cannonStallSeconds() > 0 && balls > 0 && cannon.isPresent()) {
+            int idleTicks = client.getTickCount() - lastBallChangeTick;
+            int stallTicks = (int) Math.ceil(config.cannonStallSeconds() / TICK_SECONDS);
+            if (idleTicks >= stallTicks && targetNearCannon(cannon.get())) {
+                log("Cannon appears stalled (loaded=" + balls + " unchanged ~" + idleTicks
+                        + " ticks) with a target in range; re-firing to restart");
+                fireCannon(cannon.get());
+                lastBallChangeTick = client.getTickCount(); // reset so we don't re-spam before it fires
+                tickDelay = 2;
+                return;
+            }
+        }
+
         // 3. Get back onto the fight tile if we've drifted (e.g. after looting), but don't
         //    reposition mid-fight — let auto-retaliate keep working.
         if (!pos.equals(fightTile) && !isInCombat()) {
@@ -284,6 +343,17 @@ public class SlayerCombatPlugin extends Plugin {
         }
 
         // Otherwise idle on the fight tile and let the cannon + auto-retaliate do the work.
+    }
+
+    /** True if an alive target monster is within the cannon's firing range of the cannon. */
+    private boolean targetNearCannon(TileObject cannon) {
+        WorldPoint cannonLoc = cannon.getWorldLocation();
+        return NPCs.search()
+                .idInList(config.monster().npcIdList())
+                .alive()
+                .filter(npc -> npc.getWorldLocation().distanceTo(cannonLoc) <= CANNON_RANGE)
+                .first()
+                .isPresent();
     }
 
     /** Finds our set-up cannon in the scene: by assembled-cannon id first, name as a fallback. */
