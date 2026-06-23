@@ -54,6 +54,8 @@ public class SlayerCombatPlugin extends Plugin {
     private ItemManager itemManager;
 
     private int tickDelay = 0;
+    private int lootTickCounter = 0;
+    private static final int LOOT_SCAN_INTERVAL = 3; // ticks between loot scans
 
     // Prayer potion item IDs (4-dose through 1-dose)
     private static final Set<Integer> PRAYER_POTION_IDS = Set.of(2434, 139, 141, 143);
@@ -97,6 +99,7 @@ public class SlayerCombatPlugin extends Plugin {
     @Override
     protected void startUp() {
         tickDelay = 0;
+        lootTickCounter = 0;
         loggedNoCannon = false;
         loggedNoCannonballs = false;
         loggedCannonActions = false;
@@ -140,28 +143,39 @@ public class SlayerCombatPlugin extends Plugin {
         }
 
         // If the character is already walking somewhere (e.g. running to loot we just
-        // clicked), don't issue any fresh click — let it arrive. This is what stops the
-        // plugin spamming "Attack" on a Kurask while we're on our way to pick something up.
+        // clicked), don't issue any fresh click — let it arrive.
         if (MenuActionInteractions.isMoving()) {
             return;
         }
 
-        // Cannon mode (e.g. Mountain trolls): manage the cannon + positioning + looting only.
+        // Scan for eligible loot every few ticks regardless of combat state. Walking to a pickup
+        // naturally gates re-scans via the isMoving() check above.
+        if (config.enableLooting()) {
+            lootTickCounter++;
+            if (lootTickCounter >= LOOT_SCAN_INTERVAL) {
+                lootTickCounter = 0;
+                if (lootNearestValuable()) {
+                    tickDelay = 2;
+                    return;
+                }
+            }
+        }
+
+        // Cannon mode (e.g. Mountain trolls): manage the cannon + positioning only.
         // We never manually attack — auto-retaliate does the fighting.
         if (cannonModeActive()) {
             cannonModeTick();
             return;
         }
 
-        if (isInCombat()) {
+        // Passive mode (e.g. Dark beasts): permanently aggressive, so never click Attack.
+        // Just reposition to the fight tile after looting and let auto-retaliate handle combat.
+        if (passiveModeActive()) {
+            passiveModeTick();
             return;
         }
 
-        // Loot before attacking the next target: once a kill is done and we're standing
-        // still, grab any valuable drops first.
-        if (config.enableLooting() && lootNearestValuable()) {
-            // Picking an item up only takes a tick or two once we're on/next to it.
-            tickDelay = 2;
+        if (isInCombat()) {
             return;
         }
 
@@ -202,6 +216,31 @@ public class SlayerCombatPlugin extends Plugin {
         }
     }
 
+    private boolean passiveModeActive() {
+        return config.monster().passiveMode;
+    }
+
+    /**
+     * Passive-mode loop (e.g. Dark beasts): monsters are permanently aggressive so we never
+     * manually attack. After looting we walk back to the fight tile and wait for them to come to us.
+     */
+    private void passiveModeTick() {
+        SlayerCombatConfig.Monster monster = config.monster();
+        if (monster.fightX == 0 && monster.fightY == 0) {
+            return; // fight tile not configured — just idle
+        }
+        if (isInCombat()) {
+            return; // already in a fight, don't interrupt
+        }
+        WorldPoint fightTile = new WorldPoint(monster.fightX, monster.fightY, client.getPlane());
+        WorldPoint pos = client.getLocalPlayer().getWorldLocation();
+        if (!pos.equals(fightTile)) {
+            log("Passive mode: returning to fight tile " + fightTile);
+            MenuActionInteractions.walkTo(fightTile);
+            tickDelay = 2;
+        }
+    }
+
     /**
      * Cannon-mode loop (Mountain trolls): keep a Dwarven multicannon set up and fed, stand on the
      * fight tile so the cannon aggros monsters onto us, and loot when it's safe. No manual
@@ -210,7 +249,7 @@ public class SlayerCombatPlugin extends Plugin {
     private void cannonModeTick() {
         SlayerCombatConfig.Monster monster = config.monster();
         WorldPoint setupTile = new WorldPoint(monster.cannonSetupX, monster.cannonSetupY, client.getPlane());
-        WorldPoint fightTile = new WorldPoint(monster.cannonFightX, monster.cannonFightY, client.getPlane());
+        WorldPoint fightTile = new WorldPoint(monster.fightX, monster.fightY, client.getPlane());
         WorldPoint pos = client.getLocalPlayer().getWorldLocation();
 
         // Locate our assembled cannon by object id (DWARF_MULTICANNON1). Don't filter on the "Fire"
@@ -252,6 +291,18 @@ public class SlayerCombatPlugin extends Plugin {
             return;
         }
         loggedNoCannon = false;
+
+        // 1b. Cannon is broken (has "Repair" action instead of "Fire"): repair it, then treat it
+        //     like a fresh setup so it gets started once the repair animation completes.
+        if (cannon.isPresent() && cannonNeedsRepair(cannon.get())) {
+            log("Cannon is broken; repairing");
+            if (MenuActionInteractions.interactObject(cannon.get(), "Repair")) {
+                pendingInitialFire = true;
+                lastBallChangeTick = client.getTickCount(); // don't stall-detect the broken idle
+                tickDelay = 5;
+            }
+            return;
+        }
 
         // 2. Refill when the loaded count is low. 'Fire' on the cannon tops it up from inventory.
         //    (A freshly set-up cannon auto-loads to max, so right after setup balls is high and no
@@ -327,17 +378,11 @@ public class SlayerCombatPlugin extends Plugin {
             }
         }
 
-        // 3. Get back onto the fight tile if we've drifted (e.g. after looting), but don't
-        //    reposition mid-fight — let auto-retaliate keep working.
-        if (!pos.equals(fightTile) && !isInCombat()) {
+        // 3. Get back onto the fight tile if we've drifted (e.g. after looting or mid-fight).
+        //    The cannon does the damage, so repositioning even during combat is correct.
+        if (!pos.equals(fightTile)) {
             log("Returning to fight tile " + fightTile);
             MenuActionInteractions.walkTo(fightTile);
-            tickDelay = 2;
-            return;
-        }
-
-        // 4. Loot valuable drops when we're not actively being hit.
-        if (config.enableLooting() && !isInCombat() && lootNearestValuable()) {
             tickDelay = 2;
             return;
         }
@@ -356,13 +401,30 @@ public class SlayerCombatPlugin extends Plugin {
                 .isPresent();
     }
 
-    /** Finds our set-up cannon in the scene: by assembled-cannon id first, name as a fallback. */
+    /** Finds our set-up cannon in the scene: by assembled-cannon id, then name, then by "Repair"
+     *  action (a broken cannon changes object ID and possibly name). */
     private Optional<TileObject> findCannon() {
         Optional<TileObject> byId = TileObjects.search().withId(ASSEMBLED_CANNON_ID).nearestToPlayer();
         if (byId.isPresent()) {
             return byId;
         }
-        return TileObjects.search().withName(CANNON_OBJECT_NAME).nearestToPlayer();
+        Optional<TileObject> byName = TileObjects.search().withName(CANNON_OBJECT_NAME).nearestToPlayer();
+        if (byName.isPresent()) {
+            return byName;
+        }
+        // Broken cannon changes object ID/name — search for any nearby object with "Repair".
+        WorldPoint pos = client.getLocalPlayer().getWorldLocation();
+        return TileObjects.search()
+                .filter(obj -> {
+                    if (obj.getWorldLocation().distanceTo(pos) > CANNON_RANGE) return false;
+                    ObjectComposition comp = TileObjectQuery.getObjectComposition(obj);
+                    if (comp == null) return false;
+                    for (String action : comp.getActions()) {
+                        if ("Repair".equalsIgnoreCase(action)) return true;
+                    }
+                    return false;
+                })
+                .nearestToPlayer();
     }
 
     /**
@@ -380,6 +442,15 @@ public class SlayerCombatPlugin extends Plugin {
         }
         // "Fire" not in the static composition — dispatch the first object option directly.
         return MenuActionInteractions.interactObjectOption(cannon, 1, "Fire");
+    }
+
+    private boolean cannonNeedsRepair(TileObject cannon) {
+        ObjectComposition comp = TileObjectQuery.getObjectComposition(cannon);
+        if (comp == null) return false;
+        for (String action : comp.getActions()) {
+            if ("Repair".equalsIgnoreCase(action)) return true;
+        }
+        return false;
     }
 
     private String describeCannon(TileObject cannon) {
@@ -462,13 +533,38 @@ public class SlayerCombatPlugin extends Plugin {
             return false;
         }
         NPC npc = (NPC) interacting;
-        // healthRatio == 0 means dead; -1 means no health bar shown (untouched NPC, still alive)
-        return config.monster().matchesId(npc.getId()) && npc.getHealthRatio() != 0;
+        SlayerCombatConfig.Monster monster = config.monster();
+        if (!monster.matchesId(npc.getId())) {
+            return false;
+        }
+        int ratio = npc.getHealthRatio();
+        if (ratio == 0) {
+            // Normally 0 means dead. For monsters needing a finishing blow (e.g. gargoyles),
+            // 0 HP means stunned — still needs one more hit before it despawns.
+            return monster.requiresFinishingBlow;
+        }
+        return true; // ratio > 0 (health bar visible) or -1 (untouched but interacting)
     }
 
     private void attackNearestTarget() {
         SlayerCombatConfig.Monster monster = config.monster();
         Player local = client.getLocalPlayer();
+
+        // Safety net for finishing-blow monsters (e.g. gargoyles): if the player's interacting
+        // reference was cleared while a 0-HP target is still in the scene (stunned, needs rock
+        // hammer), attack it immediately rather than picking up a fresh target.
+        if (monster.requiresFinishingBlow) {
+            Optional<NPC> finishing = NPCs.search()
+                    .idInList(monster.npcIdList())
+                    .filter(npc -> npc.getHealthRatio() == 0)
+                    .nearestToPlayer();
+            if (finishing.isPresent()) {
+                NPC npc = finishing.get();
+                log("Delivering finishing blow to " + npc.getName() + " index=" + npc.getIndex());
+                MenuActionInteractions.interactNpc(npc, monster.attackAction);
+                return;
+            }
+        }
 
         // Prefer a monster that is already attacking us. It's the real threat, it's
         // adjacent/reachable, and locking onto it stops us thrashing toward a different

@@ -11,8 +11,8 @@ import net.runelite.client.config.Range;
 public interface SlayerCombatConfig extends Config {
 
     enum Monster {
-        // Not cannoned, so the cannon tiles are unused (0,0). Protect from melee.
-        KURASK(new int[]{410}, "Attack", false, 0, 0, 0, 0, Prayer.PROTECT_FROM_MELEE),
+        // Not cannoned, so the cannon/fight tiles are unused (0,0). Protect from melee.
+        KURASK(new int[]{410}, "Attack", false, false, 0, 0, 0, 0, Prayer.PROTECT_FROM_MELEE),
         // Greater demon — not cannoned, same pattern as Kurask. Protect from melee. Ids by level:
         //   92  -> 2025-2032 (+ Catacombs of Kourend 5872-5875)
         //   100 -> 7245, 101 -> 7244, 113 -> 7246
@@ -22,37 +22,65 @@ public interface SlayerCombatConfig extends Config {
                 5872, 5873, 5874, 5875,
                 7244, 7245, 7246,
                 7871, 7872, 7873
-        }, "Attack", false, 0, 0, 0, 0, Prayer.PROTECT_FROM_MELEE),
+        }, "Attack", false, false, 0, 0, 0, 0, Prayer.PROTECT_FROM_MELEE),
         // Mountain troll (lvl 69) has several ids; lvl 71 is 4143. Killed with a cannon,
         // so cannonMode = true (no manual attacking — auto-retaliate does the fighting).
         // Cannon setup/fight tiles below are the Mountain troll spot. Protect from melee.
-        MOUNTAIN_TROLL(new int[]{936, 937, 938, 939, 940, 941, 942, 4143}, "Attack", true,
-                1242, 3517, 1241, 3518, Prayer.PROTECT_FROM_MELEE);
+        MOUNTAIN_TROLL(new int[]{936, 937, 938, 939, 940, 941, 942, 4143}, "Attack", true, false,
+                1242, 3517, 1241, 3518, Prayer.PROTECT_FROM_MELEE),
+        // Mutated bloodveld (lvl 123) ids 7276/7398. Cannoned in the Catacombs of Kourend.
+        // Setup and fight tile are the same. Protect from melee.
+        MUTATED_BLOODVELD(new int[]{7276, 7398}, "Attack", true, false,
+                3596, 9743, 3596, 9743, Prayer.PROTECT_FROM_MELEE),
+        // Dark beast (id 4005). Permanently aggressive — never manually attack, let them come to us.
+        // passiveMode = true: plugin repositions to fightX/fightY but skips the attack step entirely.
+        DARK_BEAST(new int[]{4005}, "Attack", false, true,
+                0, 0, 3226, 12392, Prayer.PROTECT_FROM_MISSILES),
+        // Gargoyle (lvl 111, id 412). Slayer Tower. Not cannoned. Protect from melee.
+        // requiresFinishingBlow=true: at 0 HP the gargoyle is stunned and needs one more hit
+        // (the character auto-uses a rock hammer) before it actually dies. Don't move on yet.
+        GARGOYLE(new int[]{412}, "Attack", false, false, 0, 0, 0, 0, Prayer.PROTECT_FROM_MELEE, true);
 
         public final int[] npcIds;
         public final String attackAction;
         public final boolean cannonMode;
-        // Tile to stand on to set up the cannon, and the tile to stand on while it aggros monsters.
-        // Only meaningful when cannonMode is true.
+        // When true: never manually attack — the monster is permanently aggressive and comes to us.
+        // The plugin just repositions to fightX/fightY and lets auto-retaliate handle combat.
+        public final boolean passiveMode;
+        // Tile to stand on to set up the cannon (cannon mode only).
         public final int cannonSetupX;
         public final int cannonSetupY;
-        public final int cannonFightX;
-        public final int cannonFightY;
+        // Tile to stand on during the fight — used by both cannon mode (aggro tile) and passive mode
+        // (return-to tile after looting). 0,0 means unset (no repositioning).
+        public final int fightX;
+        public final int fightY;
         // Protection prayer to keep up against this monster (e.g. PROTECT_FROM_MELEE). null = none.
         // Only used when the "Auto Protection Prayer" config toggle is on.
         public final Prayer protectionPrayer;
+        // When true, the monster reaches 0 HP but needs one more attack (finishing blow) before it
+        // dies (e.g. gargoyles require a rock hammer). Don't treat healthRatio==0 as dead.
+        public final boolean requiresFinishingBlow;
 
-        Monster(int[] npcIds, String attackAction, boolean cannonMode,
-                int cannonSetupX, int cannonSetupY, int cannonFightX, int cannonFightY,
+        Monster(int[] npcIds, String attackAction, boolean cannonMode, boolean passiveMode,
+                int cannonSetupX, int cannonSetupY, int fightX, int fightY,
                 Prayer protectionPrayer) {
+            this(npcIds, attackAction, cannonMode, passiveMode,
+                    cannonSetupX, cannonSetupY, fightX, fightY, protectionPrayer, false);
+        }
+
+        Monster(int[] npcIds, String attackAction, boolean cannonMode, boolean passiveMode,
+                int cannonSetupX, int cannonSetupY, int fightX, int fightY,
+                Prayer protectionPrayer, boolean requiresFinishingBlow) {
             this.npcIds = npcIds;
             this.attackAction = attackAction;
             this.cannonMode = cannonMode;
+            this.passiveMode = passiveMode;
             this.cannonSetupX = cannonSetupX;
             this.cannonSetupY = cannonSetupY;
-            this.cannonFightX = cannonFightX;
-            this.cannonFightY = cannonFightY;
+            this.fightX = fightX;
+            this.fightY = fightY;
             this.protectionPrayer = protectionPrayer;
+            this.requiresFinishingBlow = requiresFinishingBlow;
         }
 
         public java.util.List<Integer> npcIdList() {
