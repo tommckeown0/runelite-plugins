@@ -19,15 +19,14 @@ Game client is on **rev 238**. The obfuscated packet path (`Packets/PacketReflec
   Covers gear equip, prayers (`PrayerInteraction`), bank, GE, trade, sailing, agility buttons.
 - **Done (works):** NPC / world-object / ground-item interactions, via `InteractionApi/MenuActionInteractions.java` (`interactNpc`, `interactObject`, `takeGroundItem` — resolve the op index from the composition, don't hardcode FIRST_OPTION). New plugins should call these, not `TileObjectInteraction`/`NPCInteraction` (which still use the dead `PacketReflection.sendPacket` path).
 - `MousePackets.queueClickPacket` is a guarded no-op.
-- **Walking has no menuAction equivalent** — `MenuAction.WALK` (id 23) ignores param0/param1. So walking uses the *raw* move packet, which is now fixed on rev238 (see below). `MenuActionInteractions.walkTo(WorldPoint)` → `MousePackets.queueClickPacket()` + `MovementPackets.queueMovement(wp)`.
+- **Walking has no menuAction equivalent** — `MenuAction.WALK` (id 23) ignores param0/param1. So walking uses the *raw* move packet (see below). `MenuActionInteractions.walkTo(WorldPoint)` → `MousePackets.queueClickPacket()` + `MovementPackets.queueMovement(wp)`.
 
-## The raw packet layer was REVIVED on rev238 (movement works)
-The `PacketReflection`/`ObfuscatedNames` layer was fully broken but is now functional. Three stale values were fixed (they chained — each crash hid the next bug):
-1. `packetWriterFieldName` `"cg"` → `"aq"` (rev238 `client.cg` is a `static long`; the `df` packet writer is `client.aq`).
-2. `MOVE_GAMECLICK` opcode `"ca"` → `"eo"` (`jb.ca` was an interaction packet). `jb.eo` payload (WORLD coords, no +128): `[5][worldY LE][worldX BE][ctrl]`. Writes reordered accordingly.
-3. `offsetMultiplier`/`indexMultiplier` `1741769013`/`2108391709` → `228932457`/`-661977895` (from `xi.ea`: `au += 228932457; index = au*-661977895 - 1`). Wrong values → `ArrayIndexOutOfBoundsException` in `BufferMethods`.
+## The raw packet layer (movement only) — obfuscated names rename on every RuneLite bump
+The `PacketReflection`/`ObfuscatedNames` layer drives `MOVE_GAMECLICK` (walking) only. **The obfuscated names rename on every RuneLite jar bump even at the same game rev**, breaking walking with `NoSuchFieldException`/`IndexOutOfBoundsException`. Re-derive them statically by `javap`-ing the injected jar — see the memory `rev238-packet-layer-fixes` for the full step-by-step recipe (find clientPacketClass by self-typed-field count, getPacketBufferNode by signature, multipliers from the writeByte bytecode, MOVE field by the call site that writes constant 5, etc.).
 
-These were found with the **`A Packet Sniffer (diagnostic)`** plugin (`src/main/java/com/example/PacketSniffer/`) — reads the client's outgoing packets reflectively (queue `df.ak` of `jm` nodes, each with `jm.ah`=its `jb` def for naming + `jm.ay.al`=bytes; and output buffer `df.az`). Keep it for future packet RE, or delete once movement is confirmed. So raw packets ARE viable again when there's no menuAction equivalent — but menuAction is still preferred for interactions.
+**Current mapping (RuneLite 1.12.31.1 / rev238):** writer `client.ad` (type `dw`); isaac `dw.aa` (`xs`); addNode `dw.ae(jr,int)`; clientPacketClass `jf` (move = `jf.ea`); getPacketBufferNode `xt.ag(jf,xs,int)` — **the int param is validated and must be `-2111588182`**; node `jr`; buffer `jr.al` (`xv` extends `xm`); offset `xm.ab`, array `xm.ak`; `offsetMultiplier=-1278253407`, `indexMultiplier=769523041`. Move wire format `[5][worldX LE][worldY LE][128-ctrl]` → `MOVE_GAMECLICK_WRITES = {{"v"},{"v","r 8"},{"v","r 8"},{"s 128"}}`, write order 5/worldPointX/worldPointY/ctrlDown. (The previous 1.12.28 layout had Y-before-X with worldX big-endian and ctrl plain — that was wrong and never verified in-game.)
+
+To skip the startup vanilla-jar download, `~/.runelite/PacketUtils/<rlVersion>-<rev>.txt` must exist with two lines `true` and `<writer>.<addNode>` (currently `1.12.31.1-238.txt` = `true` / `dw.ae`). `usingClientAddNode` defaults true so the reflective addNode path is used regardless. The **`A Packet Sniffer (diagnostic)`** plugin (`src/main/java/com/example/PacketSniffer/`) reads the live outgoing writer reflectively for runtime verification, but the static recipe above is sufficient and needs no dev client.
 
 ## Recipe to fix a broken interaction
 Replace the `sendPacket(...)` call in the helper with `client.menuAction(...)`; the existing packet args already hold the right values, just map them across:
@@ -37,7 +36,7 @@ Replace the `sendPacket(...)` call in the helper with `client.menuAction(...)`; 
 Pick FIRST/SECOND/THIRD by the op index the helper resolves; verify param0/param1 against the helper's existing worldPoint→scene handling.
 
 ## Reverse-engineering tooling (only if a menu action ever needs verifying)
-Injected client jar: `~/.runelite/PacketUtils/injected-1.12.28.jar`; disassemble with JDK-11 `javap -c -p`. menuAction dispatcher is `client.uo(int x6, String x2, int x2)`. Packet builder is `gi.ak(jb, yk, byte)`; addNode is `df.az`; buffer write methods live on `xi` (et=4-byte middle-endian int, ba/ca=+128 shorts, cx=byte); buffer offset/array fields `xi.au`/`xi.al`; offsetMultiplier 228932457 / indexMultiplier -661977895.
+Injected client jar lives in the gradle cache: `~/.gradle/caches/modules-2/files-2.1/net.runelite/injected-client/<ver>/.../injected-client-<ver>.jar`. Disassemble with JDK-11 `javap -c -p` (extract with `jar xf` first; `javap -p *.class` for a fast signature dump). For 1.12.31.1: packet builder is `xt.ag(jf, xs, int)`; addNode is `dw.ae`; buffer write methods live on `xm` (el=LE short, bw=byte, dz=`128-v` byte); buffer offset/array fields `xm.ab`/`xm.ak`; offsetMultiplier -1278253407 / indexMultiplier 769523041.
 
 Once NPC/object/ground-item interactions are migrated, the whole `Packets`/`PacketReflection`/`ObfuscatedNames` layer can be deleted.
 

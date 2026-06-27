@@ -72,23 +72,30 @@ public final class ObfuscatedNames {
             {"v"},
             {"v"},
     };
-    // rev238: move packet is jb.eo, built as ea(5), ek(packed dest), bq(ctrl) — verified by
-    // sniffing real walk packets. Payload byte order: [5][worldY low][worldY high][worldX high]
-    // [worldX low][ctrl], all plain (no +128 offsets). World coords, not scene.
-    public static final String MOVE_GAMECLICK_OBFUSCATEDNAME = "eo";
+    // rev238 / RuneLite 1.12.31.1: move packet is jf.ea. Construction (decompiled from the
+    // injected client's xv buffer write methods):
+    //   buf.bw(5)             -> 1 byte, constant 5
+    //   buf.el(baseX + local) -> worldX as little-endian short (low byte, then high byte)
+    //   buf.el(baseY + local) -> worldY as little-endian short (low byte, then high byte)
+    //   buf.dz(ctrl)          -> 1 byte = (128 - ctrl)
+    // dp.aq is getBaseX and dp.al is getBaseY in the injected jar, so the FIRST coordinate written
+    // is worldX, then worldY — both little-endian. (The previous 1.12.28 mapping had them in the
+    // wrong order with worldX big-endian and ctrl plain; that was never verified to actually walk.)
+    // The METHOD_NAME fields are decorative — BufferMethods writes the byte array directly per WRITES.
+    public static final String MOVE_GAMECLICK_OBFUSCATEDNAME = "ea";
     public static final String MOVE_GAMECLICK_WRITE1 = "5";
-    public static final String MOVE_GAMECLICK_METHOD_NAME1 = "ea";
-    public static final String MOVE_GAMECLICK_WRITE2 = "worldPointY";
-    public static final String MOVE_GAMECLICK_METHOD_NAME2 = "ek";
-    public static final String MOVE_GAMECLICK_WRITE3 = "worldPointX";
-    public static final String MOVE_GAMECLICK_METHOD_NAME3 = "ek";
+    public static final String MOVE_GAMECLICK_METHOD_NAME1 = "bw";
+    public static final String MOVE_GAMECLICK_WRITE2 = "worldPointX";
+    public static final String MOVE_GAMECLICK_METHOD_NAME2 = "el";
+    public static final String MOVE_GAMECLICK_WRITE3 = "worldPointY";
+    public static final String MOVE_GAMECLICK_METHOD_NAME3 = "el";
     public static final String MOVE_GAMECLICK_WRITE4 = "ctrlDown";
-    public static final String MOVE_GAMECLICK_METHOD_NAME4 = "bq";
+    public static final String MOVE_GAMECLICK_METHOD_NAME4 = "dz";
     public static final String[][] MOVE_GAMECLICK_WRITES = new String[][]{
-            {"v"},              // constant 5
-            {"v", "r 8"},       // worldY little-endian: low byte then high byte
-            {"r 8", "v"},       // worldX big-endian: high byte then low byte
-            {"v"},              // ctrl/run flag
+            {"v"},              // constant 5 (bw)
+            {"v", "r 8"},       // worldX little-endian: low byte then high byte (el)
+            {"v", "r 8"},       // worldY little-endian: low byte then high byte (el)
+            {"s 128"},          // ctrl: byte = 128 - value (dz)
     };
 
     public static final String OPLOC1_OBFUSCATEDNAME = "dm";
@@ -517,20 +524,22 @@ public final class ObfuscatedNames {
             {"strn"},
     };
 
-    public static final String offsetMultiplier = "228932457";  // rev238: xi.ea does au += 228932457
-    public static final String indexMultiplier = "-661977895";  // rev238: index = au * -661977895 - 1
-    public static final String addNodeGarbageValue = "-1771370198";
-    public static final String getPacketBufferNodeGarbageValue = "0"; // gi.ak third param is byte; any byte-range value works
-    public static final String packetWriterFieldName = "aq"; // rev238: client.aq is the df packet writer (was "cg", which is now a static long)
-    public static final String isaacCipherFieldName = "av"; // df.av is public yk (ISAAC cipher)
-    public static final String addNodeMethodName = "az"; // df.az(jm, int) is the addNode method
-    public static final String clientPacketClassName = "jb"; // jb holds all static packet fields (jb.ao = OPNPC1 etc.)
-    public static final String packetWriterClassName = "jm"; // df.az first param is jm; used by auto-detection filter
-    public static final String classContainingGetPacketBufferNodeName = "gi"; // gi.ak(jb, yk, byte) builds the packet buffer
-    public static final String packetBufferNodeClassName = "jm"; // gi.ak returns jm
-    public static final String packetBufferFieldName = "ay"; // jm.ay is public xj (extends xi/PacketBuffer)
-    public static final String bufferOffsetField = "au"; // xi.au is public int (offset)
-    public static final String bufferArrayField = "al"; // xi.al is public byte[] (array)
+    // RL 1.12.31.1 / rev238: xm.bw/el writeByte does `ak[(ab += -1278253407) * 769523041 - 1] = v`.
+    // The two constants are modular inverses mod 2^32, mirroring BufferMethods.nextIndex / index calc.
+    public static final String offsetMultiplier = "-1278253407"; // ab += -1278253407 per byte
+    public static final String indexMultiplier = "769523041";    // arrayIndex = ab * 769523041 - 1
+    public static final String addNodeGarbageValue = "-1771370198"; // dw.ae's int param is unused; any value
+    public static final String getPacketBufferNodeGarbageValue = "-2111588182"; // xt.ag REQUIRES this exact int (else throws); abs<Integer.MAX so int-invoke path is used
+    public static final String packetWriterFieldName = "ad"; // client.ad is the dw packet writer (was client.aq/df)
+    public static final String isaacCipherFieldName = "aa"; // dw.aa is public xs (ISAAC cipher)
+    public static final String addNodeMethodName = "ae"; // dw.ae(jr, int) is the addNode method
+    public static final String clientPacketClassName = "jf"; // jf holds all static packet fields (jf.ea = MOVE_GAMECLICK etc.)
+    public static final String packetWriterClassName = "jr"; // dw.ae first param is jr (node); used by auto-detection filter
+    public static final String classContainingGetPacketBufferNodeName = "xt"; // xt.ag(jf, xs, int) builds the packet buffer node
+    public static final String packetBufferNodeClassName = "jr"; // xt.ag returns jr
+    public static final String packetBufferFieldName = "al"; // jr.al is public xv (extends xm/PacketBuffer)
+    public static final String bufferOffsetField = "ab"; // xm.ab is public int (offset)
+    public static final String bufferArrayField = "ak"; // xm.ak is public byte[] (array)
     public static final String MouseHandler_lastPressedTimeMillisClass = "bp";
     public static final String MouseHandler_lastPressedTimeMillisField = "au";
     public static final String clientMillisField = "jn";

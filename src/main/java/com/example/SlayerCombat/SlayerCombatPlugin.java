@@ -60,6 +60,12 @@ public class SlayerCombatPlugin extends Plugin {
     // Prayer potion item IDs (4-dose through 1-dose)
     private static final Set<Integer> PRAYER_POTION_IDS = Set.of(2434, 139, 141, 143);
 
+    // Vyrewatch Sentinel: statue to pray at and the door that may block the path to it.
+    private static final int PRAYER_ALTAR_ID = 39234;
+    private static final int VYREWATCH_DOOR_X = 3605;
+    private static final int VYREWATCH_DOOR_Y1 = 3359;
+    private static final int VYREWATCH_DOOR_Y2 = 3358;
+
     // Cannon mode: names the assembled cannon object and the inventory part we "Set-up". The
     // assembled object's real name is "Dwarf multicannon" (confirmed via the debug dump); we detect
     // it by id anyway (name is only a fallback).
@@ -131,7 +137,16 @@ public class SlayerCombatPlugin extends Plugin {
         // cheap to call every tick and doesn't interfere with the rest of the loop.
         maintainProtectionPrayer();
 
-        if (config.enablePrayerPots()) {
+        if (config.monster().useAltarPrayer) {
+            int currentPrayer = client.getBoostedSkillLevel(Skill.PRAYER);
+            if (currentPrayer < config.prayerThreshold()) {
+                log("Prayer low (" + currentPrayer + "), restoring at statue");
+                if (restorePrayerAtAltar()) {
+                    tickDelay = 2;
+                    return;
+                }
+            }
+        } else if (config.enablePrayerPots()) {
             int currentPrayer = client.getBoostedSkillLevel(Skill.PRAYER);
             if (currentPrayer < config.prayerThreshold()) {
                 log("Prayer low (" + currentPrayer + "), drinking prayer potion");
@@ -229,9 +244,8 @@ public class SlayerCombatPlugin extends Plugin {
         if (monster.fightX == 0 && monster.fightY == 0) {
             return; // fight tile not configured — just idle
         }
-        if (isInCombat()) {
-            return; // already in a fight, don't interrupt
-        }
+        // Don't skip repositioning while in combat — the monster is permanently aggressive and will
+        // follow us back to the fight tile (same behaviour as cannon mode's unconditional reposition).
         WorldPoint fightTile = new WorldPoint(monster.fightX, monster.fightY, client.getPlane());
         WorldPoint pos = client.getLocalPlayer().getWorldLocation();
         if (!pos.equals(fightTile)) {
@@ -603,6 +617,45 @@ public class SlayerCombatPlugin extends Plugin {
         log("Attacking " + npc.getName() + " index=" + npc.getIndex()
                 + " op=" + optionIndex + " (" + MenuActionInteractions.npcOptionMenuAction(optionIndex) + ")");
         MenuActionInteractions.interactNpc(npc, monster.attackAction);
+    }
+
+    /**
+     * Restores prayer at the Vyrewatch Sentinel altar (Statue, id 39234). Opens the door
+     * between y=3359 and y=3358 on x=3605 first if it is currently closed.
+     * Returns true if an action was dispatched this tick.
+     */
+    private boolean restorePrayerAtAltar() {
+        Optional<TileObject> door = findClosedVyrewatchDoor();
+        if (door.isPresent()) {
+            log("Door to statue is closed; opening it");
+            return MenuActionInteractions.interactObject(door.get(), "Open");
+        }
+        Optional<TileObject> altar = TileObjects.search().withId(PRAYER_ALTAR_ID).nearestToPlayer();
+        if (!altar.isPresent()) {
+            log("Prayer statue (id=" + PRAYER_ALTAR_ID + ") not found on scene");
+            return false;
+        }
+        log("Praying at statue to restore prayer");
+        return MenuActionInteractions.interactObject(altar.get(), "Pray-at");
+    }
+
+    /** Returns the door between the altar and fight area if it is currently closed (has "Open" action). */
+    private Optional<TileObject> findClosedVyrewatchDoor() {
+        int plane = client.getPlane();
+        WorldPoint tile1 = new WorldPoint(VYREWATCH_DOOR_X, VYREWATCH_DOOR_Y1, plane);
+        WorldPoint tile2 = new WorldPoint(VYREWATCH_DOOR_X, VYREWATCH_DOOR_Y2, plane);
+        return TileObjects.search()
+                .filter(obj -> {
+                    WorldPoint loc = obj.getWorldLocation();
+                    if (!loc.equals(tile1) && !loc.equals(tile2)) return false;
+                    ObjectComposition comp = TileObjectQuery.getObjectComposition(obj);
+                    if (comp == null) return false;
+                    for (String action : comp.getActions()) {
+                        if ("Open".equalsIgnoreCase(action)) return true;
+                    }
+                    return false;
+                })
+                .nearestToPlayer();
     }
 
     private void log(String message) {

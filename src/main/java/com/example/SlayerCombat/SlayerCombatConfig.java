@@ -35,11 +35,26 @@ public interface SlayerCombatConfig extends Config {
         // Dark beast (id 4005). Permanently aggressive — never manually attack, let them come to us.
         // passiveMode = true: plugin repositions to fightX/fightY but skips the attack step entirely.
         DARK_BEAST(new int[]{4005}, "Attack", false, true,
-                0, 0, 3226, 12392, Prayer.PROTECT_FROM_MISSILES),
+                0, 0, 3226, 12392, Prayer.PROTECT_FROM_MELEE),
         // Gargoyle (lvl 111, id 412). Slayer Tower. Not cannoned. Protect from melee.
         // requiresFinishingBlow=true: at 0 HP the gargoyle is stunned and needs one more hit
         // (the character auto-uses a rock hammer) before it actually dies. Don't move on yet.
-        GARGOYLE(new int[]{412}, "Attack", false, false, 0, 0, 0, 0, Prayer.PROTECT_FROM_MELEE, true);
+        GARGOYLE(new int[]{412}, "Attack", false, false, 0, 0, 0, 0, Prayer.PROTECT_FROM_MELEE, true),
+        // Fire giant. Not cannoned, attack manually like Greater Demon. Protect from melee.
+        // Lvl 86: 2075-2084, Lvl 104: 7252, Lvl 109: 7251.
+        FIRE_GIANT(new int[]{
+                2075, 2076, 2077, 2078, 2079, 2080, 2081, 2082, 2083, 2084,
+                7251, 7252
+        }, "Attack", false, false, 0, 0, 0, 0, Prayer.PROTECT_FROM_MELEE),
+        // Vyrewatch Sentinel (Darkmeyer). Permanently aggressive — passive mode. Protect from melee.
+        // No cannon. Prayer restored by praying at the nearby Statue (id 39234) instead of potions;
+        // a door at y=3359/3358 on x=3605 may need opening first. Fight tile faces the main room.
+        VYREWATCH_SENTINEL(new int[]{9756, 9757, 9758, 9759, 9760, 9761, 9762, 9763},
+                "Attack", false, true, 0, 0, 3605, 3362, Prayer.PROTECT_FROM_MELEE, false, true),
+        // Kalphite Soldier (lvl 85, id 958). Kalphite Lair. Cannoned. Protect from melee.
+        // Setup tile and fight tile are the same.
+        KALPHITE_SOLDIER(new int[]{958}, "Attack", true, false,
+                3307, 9528, 3307, 9528, Prayer.PROTECT_FROM_MELEE);
 
         public final int[] npcIds;
         public final String attackAction;
@@ -60,17 +75,27 @@ public interface SlayerCombatConfig extends Config {
         // When true, the monster reaches 0 HP but needs one more attack (finishing blow) before it
         // dies (e.g. gargoyles require a rock hammer). Don't treat healthRatio==0 as dead.
         public final boolean requiresFinishingBlow;
+        // When true, restore prayer at a nearby altar/statue instead of drinking potions.
+        // The monster's impl must define the altar object and door location.
+        public final boolean useAltarPrayer;
 
         Monster(int[] npcIds, String attackAction, boolean cannonMode, boolean passiveMode,
                 int cannonSetupX, int cannonSetupY, int fightX, int fightY,
                 Prayer protectionPrayer) {
             this(npcIds, attackAction, cannonMode, passiveMode,
-                    cannonSetupX, cannonSetupY, fightX, fightY, protectionPrayer, false);
+                    cannonSetupX, cannonSetupY, fightX, fightY, protectionPrayer, false, false);
         }
 
         Monster(int[] npcIds, String attackAction, boolean cannonMode, boolean passiveMode,
                 int cannonSetupX, int cannonSetupY, int fightX, int fightY,
                 Prayer protectionPrayer, boolean requiresFinishingBlow) {
+            this(npcIds, attackAction, cannonMode, passiveMode,
+                    cannonSetupX, cannonSetupY, fightX, fightY, protectionPrayer, requiresFinishingBlow, false);
+        }
+
+        Monster(int[] npcIds, String attackAction, boolean cannonMode, boolean passiveMode,
+                int cannonSetupX, int cannonSetupY, int fightX, int fightY,
+                Prayer protectionPrayer, boolean requiresFinishingBlow, boolean useAltarPrayer) {
             this.npcIds = npcIds;
             this.attackAction = attackAction;
             this.cannonMode = cannonMode;
@@ -81,6 +106,7 @@ public interface SlayerCombatConfig extends Config {
             this.fightY = fightY;
             this.protectionPrayer = protectionPrayer;
             this.requiresFinishingBlow = requiresFinishingBlow;
+            this.useAltarPrayer = useAltarPrayer;
         }
 
         public java.util.List<Integer> npcIdList() {
