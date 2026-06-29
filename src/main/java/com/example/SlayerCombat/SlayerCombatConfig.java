@@ -54,7 +54,12 @@ public interface SlayerCombatConfig extends Config {
         // Kalphite Soldier (lvl 85, id 958). Kalphite Lair. Cannoned. Protect from melee.
         // Setup tile and fight tile are the same.
         KALPHITE_SOLDIER(new int[]{958}, "Attack", true, false,
-                3307, 9528, 3307, 9528, Prayer.PROTECT_FROM_MELEE);
+                3307, 9528, 3307, 9528, Prayer.PROTECT_FROM_MELEE),
+        // Dagannoth (Lighthouse, lvl 74 and 92). Cannoned. Protect from melee.
+        // fightX/Y = 0,0: dagannoths have ranged attacks that trigger auto-retaliate and drag us
+        // off the fight tile constantly — disable repositioning and just let the cannon do the work.
+        DAGANNOTH_LIGHTHOUSE(new int[]{970, 971, 972, 973, 974, 975, 7259, 7260}, "Attack", true, false,
+                2524, 10020, 0, 0, Prayer.PROTECT_FROM_MELEE);
 
         public final int[] npcIds;
         public final String attackAction;

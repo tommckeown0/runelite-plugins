@@ -393,12 +393,14 @@ public class SlayerCombatPlugin extends Plugin {
         }
 
         // 3. Get back onto the fight tile if we've drifted (e.g. after looting or mid-fight).
-        //    The cannon does the damage, so repositioning even during combat is correct.
+        //    0,0 means no fight tile configured — skip repositioning and let the cannon do the work.
+        if (monster.fightX == 0 && monster.fightY == 0) {
+            return;
+        }
         if (!pos.equals(fightTile)) {
             log("Returning to fight tile " + fightTile);
             MenuActionInteractions.walkTo(fightTile);
             tickDelay = 2;
-            return;
         }
 
         // Otherwise idle on the fight tile and let the cannon + auto-retaliate do the work.
