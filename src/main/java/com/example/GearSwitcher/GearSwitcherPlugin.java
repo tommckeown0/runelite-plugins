@@ -174,12 +174,12 @@ public class GearSwitcherPlugin extends Plugin {
 
     private void equipMagicSetup() {
         int[] magicGear = parseItemIds(config.magicGear());
-        equipLoadout(magicGear, Prayer.MYSTIC_MIGHT);
+        equipLoadout(magicGear, Prayer.AUGURY);
     }
 
     private void equipRangedSetup() {
         int[] rangedGear = parseItemIds(config.rangedGear());
-        equipLoadout(rangedGear, Prayer.EAGLE_EYE);
+        equipLoadout(rangedGear, Prayer.RIGOUR);
     }
 
     private void equipMeleeSetup() {

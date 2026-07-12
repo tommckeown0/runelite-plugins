@@ -10,9 +10,40 @@ import net.runelite.client.config.Range;
 @ConfigGroup("slayercombat")
 public interface SlayerCombatConfig extends Config {
 
+    // Monsters are kept in alphabetical order — insert new entries in the correct position.
     enum Monster {
-        // Not cannoned, so the cannon/fight tiles are unused (0,0). Protect from melee.
-        KURASK(new int[]{410}, "Attack", false, false, 0, 0, 0, 0, Prayer.PROTECT_FROM_MELEE),
+        // Abyssal demon (lvl 124, id 7241). Not cannoned. Protect from melee.
+        ABYSSAL_DEMON(new int[]{7241}, "Attack", false, false, 0, 0, 0, 0, Prayer.PROTECT_FROM_MELEE),
+        // Black demon — not cannoned, same pattern as Greater demon. Protect from melee. Ids by level:
+        //   172 -> 240, 2048-2052, 5874-5877 (+ Catacombs of Kourend)
+        //   178 -> 7243, 184 -> 7242
+        //   188 (Wilderness Slayer Cave) -> 7874, 7875, 7876
+        BLACK_DEMON(new int[]{
+                240, 2048, 2049, 2050, 2051, 2052, 5874, 5875, 5876, 5877,
+                7242, 7243,
+                7874, 7875, 7876
+        }, "Attack", false, false, 0, 0, 0, 0, Prayer.PROTECT_FROM_MELEE),
+        // Dagannoth (Lighthouse, lvl 74 and 92). Cannoned. Protect from melee.
+        // fightX/Y = 0,0: dagannoths have ranged attacks that trigger auto-retaliate and drag us
+        // off the fight tile constantly — disable repositioning and just let the cannon do the work.
+        DAGANNOTH(new int[]{970, 971, 972, 973, 974, 975, 7259, 7260}, "Attack", true, false,
+                2524, 10020, 0, 0, Prayer.PROTECT_FROM_MELEE),
+        // Dark beast (id 4005). Permanently aggressive — never manually attack, let them come to us.
+        // passiveMode = true: plugin repositions to fightX/fightY but skips the attack step entirely.
+        DARK_BEAST(new int[]{4005}, "Attack", false, true,
+                0, 0, 3226, 12392, Prayer.PROTECT_FROM_MELEE),
+        // Fire giant. Not cannoned, attack manually like Greater Demon. Protect from melee.
+        // Lvl 86: 2075-2084, Lvl 104: 7252, Lvl 109: 7251.
+        FIRE_GIANT(new int[]{
+                2075, 2076, 2077, 2078, 2079, 2080, 2081, 2082, 2083, 2084,
+                7251, 7252
+        }, "Attack", false, false, 0, 0, 0, 0, Prayer.PROTECT_FROM_MELEE),
+        // Gargoyle (lvl 111, id 412). Slayer Tower. Not cannoned. Protect from melee.
+        // requiresFinishingBlow=true: at 0 HP the gargoyle is stunned and needs one more hit
+        // (the character auto-uses a rock hammer) before it actually dies. Don't move on yet.
+        GARGOYLE(new int[]{
+                412, 1543
+        }, "Attack", false, false, 0, 0, 0, 0, Prayer.PROTECT_FROM_MELEE, true),
         // Greater demon — not cannoned, same pattern as Kurask. Protect from melee. Ids by level:
         //   92  -> 2025-2032 (+ Catacombs of Kourend 5872-5875)
         //   100 -> 7245, 101 -> 7244, 113 -> 7246
@@ -23,6 +54,18 @@ public interface SlayerCombatConfig extends Config {
                 7244, 7245, 7246,
                 7871, 7872, 7873
         }, "Attack", false, false, 0, 0, 0, 0, Prayer.PROTECT_FROM_MELEE),
+        // Hellhound — not cannoned, same pattern as Abyssal demon. Protect from melee. Ids by level:
+        //   122 -> 104, 105, 7256
+        //   127 -> 3133
+        //   136 -> 7877
+        //   Construction (player-owned house) -> 135
+        HELLHOUND(new int[]{104, 105, 135, 3133, 7256, 7877}, "Attack", false, false, 0, 0, 0, 0, Prayer.PROTECT_FROM_MELEE),
+        // Kalphite Soldier (lvl 85, id 958). Kalphite Lair. Cannoned. Protect from melee.
+        // Setup tile and fight tile are the same.
+        KALPHITE_SOLDIER(new int[]{958}, "Attack", true, false,
+                3307, 9528, 3307, 9528, Prayer.PROTECT_FROM_MELEE),
+        // Not cannoned, so the cannon/fight tiles are unused (0,0). Protect from melee.
+        KURASK(new int[]{410}, "Attack", false, false, 0, 0, 0, 0, Prayer.PROTECT_FROM_MELEE),
         // Mountain troll (lvl 69) has several ids; lvl 71 is 4143. Killed with a cannon,
         // so cannonMode = true (no manual attacking — auto-retaliate does the fighting).
         // Cannon setup/fight tiles below are the Mountain troll spot. Protect from melee.
@@ -32,34 +75,11 @@ public interface SlayerCombatConfig extends Config {
         // Setup and fight tile are the same. Protect from melee.
         MUTATED_BLOODVELD(new int[]{7276, 7398}, "Attack", true, false,
                 3596, 9743, 3596, 9743, Prayer.PROTECT_FROM_MELEE),
-        // Dark beast (id 4005). Permanently aggressive — never manually attack, let them come to us.
-        // passiveMode = true: plugin repositions to fightX/fightY but skips the attack step entirely.
-        DARK_BEAST(new int[]{4005}, "Attack", false, true,
-                0, 0, 3226, 12392, Prayer.PROTECT_FROM_MELEE),
-        // Gargoyle (lvl 111, id 412). Slayer Tower. Not cannoned. Protect from melee.
-        // requiresFinishingBlow=true: at 0 HP the gargoyle is stunned and needs one more hit
-        // (the character auto-uses a rock hammer) before it actually dies. Don't move on yet.
-        GARGOYLE(new int[]{412}, "Attack", false, false, 0, 0, 0, 0, Prayer.PROTECT_FROM_MELEE, true),
-        // Fire giant. Not cannoned, attack manually like Greater Demon. Protect from melee.
-        // Lvl 86: 2075-2084, Lvl 104: 7252, Lvl 109: 7251.
-        FIRE_GIANT(new int[]{
-                2075, 2076, 2077, 2078, 2079, 2080, 2081, 2082, 2083, 2084,
-                7251, 7252
-        }, "Attack", false, false, 0, 0, 0, 0, Prayer.PROTECT_FROM_MELEE),
         // Vyrewatch Sentinel (Darkmeyer). Permanently aggressive — passive mode. Protect from melee.
         // No cannon. Prayer restored by praying at the nearby Statue (id 39234) instead of potions;
         // a door at y=3359/3358 on x=3605 may need opening first. Fight tile faces the main room.
         VYREWATCH_SENTINEL(new int[]{9756, 9757, 9758, 9759, 9760, 9761, 9762, 9763},
-                "Attack", false, true, 0, 0, 3605, 3362, Prayer.PROTECT_FROM_MELEE, false, true),
-        // Kalphite Soldier (lvl 85, id 958). Kalphite Lair. Cannoned. Protect from melee.
-        // Setup tile and fight tile are the same.
-        KALPHITE_SOLDIER(new int[]{958}, "Attack", true, false,
-                3307, 9528, 3307, 9528, Prayer.PROTECT_FROM_MELEE),
-        // Dagannoth (Lighthouse, lvl 74 and 92). Cannoned. Protect from melee.
-        // fightX/Y = 0,0: dagannoths have ranged attacks that trigger auto-retaliate and drag us
-        // off the fight tile constantly — disable repositioning and just let the cannon do the work.
-        DAGANNOTH_LIGHTHOUSE(new int[]{970, 971, 972, 973, 974, 975, 7259, 7260}, "Attack", true, false,
-                2524, 10020, 0, 0, Prayer.PROTECT_FROM_MELEE);
+                "Attack", false, true, 0, 0, 3605, 3362, Prayer.PROTECT_FROM_MELEE, false, true);
 
         public final int[] npcIds;
         public final String attackAction;

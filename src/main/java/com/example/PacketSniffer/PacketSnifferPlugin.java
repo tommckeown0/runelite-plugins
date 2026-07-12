@@ -23,19 +23,28 @@ import java.util.Set;
 
 /**
  * One-off diagnostic to capture the bytes of OUTGOING packets the game client queues, so we can
- * reverse the rev-238 "walk to tile" (MOVE_GAMECLICK) packet that has no menuAction equivalent.
+ * reverse packets that have no menuAction equivalent (originally built for MOVE_GAMECLICK; reused
+ * 2026-07-12 for the "use item on NPC/object" packets, since {@code client.menuAction} cannot
+ * synthesize those — see memory "menuaction-requires-existing-entry").
  *
- * <p>How it works: the client's df packet-writer ({@code PacketReflection.getPacketWriteObject()})
- * holds pending packets in its {@code ak} field — a {@code no} linked list of {@code jm} nodes.
- * Each node keeps the packet bytes in {@code ay.al} (byte[]) and the length in {@code as}
- * (encoded; real length = {@code as * 1810843567}). We poll that list every client tick, dump any
- * short packet we haven't seen, and log the player's current walk destination alongside — so a
- * deliberate click-to-walk can be matched to its packet by finding the destination scene coords in
- * the payload.
+ * <p>How it works: the client's dw packet-writer ({@code PacketReflection.getPacketWriteObject()})
+ * holds pending packets in its {@code ag} field — an {@code nu} (Collection) of {@code jr} nodes.
+ * Each node keeps the packet bytes in {@code al.ak} (byte[]) and the length in {@code aq}
+ * (encoded; real length = {@code aq * -1547427033} — this exact constant is what {@code dw.al()}/
+ * {@code dw.av()} themselves use to decode {@code jr.aq} before copying, read directly out of their
+ * disassembly rather than derived). We poll that list every client tick, dump any short packet we
+ * haven't seen, and log the player's current walk destination alongside — so a deliberate
+ * click-to-walk (or any other single deliberate action) can be matched to its packet by eye.
  *
- * <p>Usage: enable this plugin + the SlayerCombat debug logging, stand still, click ONE tile to
- * walk, and read the console. The packet whose payload contains the destination's scene X/Y is the
- * walk packet. Then disable this plugin.
+ * <p>Field names here are specific to injected-client 1.12.31.1 (rev238) and were re-derived by
+ * javap-ing that jar after the previous {@code ak}/{@code as}/{@code ay}/{@code ah} names (from an
+ * older client build) started throwing {@code NoSuchMethodException}/wrong-type errors — the {@code
+ * dw} class's pending-queue field is now named {@code ag} (type {@code nu}), not {@code ak} (which
+ * is now an unrelated {@code int}). The output-batch capture ({@code dumpOutputBatch}) relied on a
+ * {@code df.az} field that no longer exists in this form and has been removed rather than guessed.
+ *
+ * <p>Usage: enable this plugin, perform ONE deliberate action (e.g. click a tile to walk, or use an
+ * item on an NPC/object), and read the console. Then disable this plugin.
  */
 @PluginDescriptor(
         name = "A Packet Sniffer (diagnostic)",
@@ -45,9 +54,9 @@ import java.util.Set;
 )
 public class PacketSnifferPlugin extends Plugin {
 
-    // jm.as is stored as (realLength * 1481414135); 1810843567 is its modular inverse, so
-    // realLength = as * 1810843567 (mod 2^32, i.e. normal int overflow). Verified in df.az/df.ay.
-    private static final int LENGTH_DECODE_MULTIPLIER = 1810843567;
+    // jr.aq is a doubly-encoded buffer offset; -1547427033 decodes it to a real byte count.
+    // Read directly out of dw.al()/dw.av()'s own decode call sites, not independently derived.
+    private static final int LENGTH_DECODE_MULTIPLIER = -1547427033;
 
     @Inject
     private Client client;
@@ -55,17 +64,13 @@ public class PacketSnifferPlugin extends Plugin {
     @Inject
     private PacketSnifferConfig config;
 
-    private Field dfAkField;       // no list of pending packet nodes
-    private Field jmAsField;       // jm.as  (encoded length)
-    private Field jmAyField;       // jm.ay  (xj buffer)
-    private Field jmAhField;       // jm.ah  (jb packet definition)
-    private Field bufArrayField;   // xi/xj.al (byte[])
-    private Field dfAzField;       // df.az (xi output buffer that holds the flushed batch)
-    private Field outArrayField;   // xi.al (byte[]) on the output buffer
-    private Field outOffsetField;  // xi.au (encoded offset/length) on the output buffer
-    private Method noToArray;      // no.toArray()
-    private final Map<Object, String> jbName = new IdentityHashMap<>(); // jb instance -> "jb.xx"
-    private String lastBatchHex = "";
+    private Field dwAgField;       // dw.ag — nu (Collection) of pending packet nodes
+    private Field jrAqField;       // jr.aq — encoded length
+    private Field jrAlField;       // jr.al — xv buffer
+    private Field jrAxField;       // jr.ax — jf packet definition
+    private Field bufArrayField;   // xv/xm.ak (byte[])
+    private Method nuToArray;      // nu.toArray()
+    private final Map<Object, String> jfName = new IdentityHashMap<>(); // jf instance -> "jf.xx"
     private boolean resolved;
 
     // De-dupe: don't re-log the same node while it lingers in the queue across ticks.
@@ -73,7 +78,9 @@ public class PacketSnifferPlugin extends Plugin {
     private int ticksSinceClear;
 
     // Known high-frequency noise (mouse click/move, heartbeat) — identified from earlier captures.
-    private static final Set<String> NOISE = Set.of("jb.ds", "jb.eg", "jb.bj", "jb.cn");
+    // Field names were "jb.xx" under the old (stale) mapping; re-verify against the "mapped N jf
+    // packet definitions" log + a quiet baseline capture before trusting this list again.
+    private static final Set<String> NOISE = Set.of("jf.ds", "jf.eg", "jf.bj", "jf.cn");
 
     @Provides
     PacketSnifferConfig provideConfig(ConfigManager configManager) {
@@ -98,44 +105,6 @@ public class PacketSnifferPlugin extends Plugin {
             return;
         }
         dumpPendingPackets();
-        dumpOutputBatch();
-    }
-
-    /**
-     * Dumps the full batch of bytes in the output buffer ({@code df.az}) whenever it changes — this
-     * holds everything the client just flushed to the socket, including the move packet that the
-     * queue poll keeps missing. The move packet's payload (plaintext) contains the destination
-     * scene coords, so we can find it by eye against the logged destination.
-     */
-    private void dumpOutputBatch() {
-        if (dfAzField == null) {
-            return;
-        }
-        try {
-            Object df = PacketReflection.getPacketWriteObject();
-            Object outBuf = dfAzField.get(df);
-            if (outBuf == null) {
-                return;
-            }
-            byte[] arr = (byte[]) outArrayField.get(outBuf);
-            int encodedOff = outOffsetField.getInt(outBuf);
-            int len = encodedOff * -661977895; // decode xi.au -> real byte count (indexMultiplier)
-            if (arr == null || len <= 0) {
-                return;
-            }
-            len = Math.min(len, Math.min(arr.length, 200));
-            StringBuilder hex = new StringBuilder();
-            for (int i = 0; i < len; i++) {
-                hex.append(String.format("%02X ", arr[i] & 0xFF));
-            }
-            String h = hex.toString();
-            if (!h.equals(lastBatchHex)) {
-                lastBatchHex = h;
-                System.out.println("[PacketSniffer] BATCH len=" + len + " bytes=[ " + h + "]");
-            }
-        } catch (Exception e) {
-            System.out.println("[PacketSniffer] batch error: " + e);
-        }
     }
 
     @Subscribe
@@ -162,22 +131,22 @@ public class PacketSnifferPlugin extends Plugin {
             return;
         }
         try {
-            Object df = PacketReflection.getPacketWriteObject();
-            if (df == null) {
+            Object dw = PacketReflection.getPacketWriteObject();
+            if (dw == null) {
                 return;
             }
-            Object noList = dfAkField.get(df);
-            if (noList == null) {
+            Object nuList = dwAgField.get(dw);
+            if (nuList == null) {
                 return;
             }
-            Object[] nodes = (Object[]) noToArray.invoke(noList);
+            Object[] nodes = (Object[]) nuToArray.invoke(nuList);
             for (Object node : nodes) {
-                if (node == null || !jmAsField.getDeclaringClass().isInstance(node)) {
+                if (node == null || !jrAqField.getDeclaringClass().isInstance(node)) {
                     continue;
                 }
-                int encodedLen = jmAsField.getInt(node);
+                int encodedLen = jrAqField.getInt(node);
                 int len = encodedLen * LENGTH_DECODE_MULTIPLIER;
-                Object buffer = jmAyField.get(node);
+                Object buffer = jrAlField.get(node);
                 if (buffer == null) {
                     continue;
                 }
@@ -185,9 +154,9 @@ public class PacketSnifferPlugin extends Plugin {
                 if (arr == null || len <= 0 || len > arr.length || len > 160) {
                     continue;
                 }
-                // Identify the packet by its jb definition (no decryption needed).
-                Object jbDef = jmAhField.get(node);
-                String name = jbName.getOrDefault(jbDef, "jb.?");
+                // Identify the packet by its jf definition (no decryption needed).
+                Object jfDef = jrAxField.get(node);
+                String name = jfName.getOrDefault(jfDef, "jf.?");
                 if (NOISE.contains(name)) {
                     continue; // skip mouse/heartbeat traffic — we want the walk packet
                 }
@@ -207,68 +176,61 @@ public class PacketSnifferPlugin extends Plugin {
 
     private boolean resolve() {
         if (resolved) {
-            return dfAkField != null;
+            return dwAgField != null;
         }
         resolved = true;
         try {
-            Object df = PacketReflection.getPacketWriteObject();
-            if (df == null) {
+            Object dw = PacketReflection.getPacketWriteObject();
+            if (dw == null) {
                 return false;
             }
-            dfAkField = df.getClass().getDeclaredField("ak");
-            dfAkField.setAccessible(true);
+            dwAgField = dw.getClass().getDeclaredField("ag");
+            dwAgField.setAccessible(true);
 
-            Object noList = dfAkField.get(df);
-            noToArray = noList.getClass().getMethod("toArray");
+            Object nuList = dwAgField.get(dw);
+            nuToArray = nuList.getClass().getMethod("toArray");
 
-            // Resolve jm (node) + buffer fields from the packet-buffer-node class the framework knows.
-            Class<?> jmClass = PacketReflection.getPacketBufferNodeClass();
-            jmAsField = jmClass.getDeclaredField("as");
-            jmAsField.setAccessible(true);
-            jmAyField = jmClass.getDeclaredField("ay");
-            jmAyField.setAccessible(true);
-            jmAhField = jmClass.getDeclaredField("ah"); // jb packet definition
-            jmAhField.setAccessible(true);
+            // Resolve jr (node) + buffer fields from the packet-buffer-node class the framework knows.
+            Class<?> jrClass = PacketReflection.getPacketBufferNodeClass();
+            jrAqField = jrClass.getDeclaredField("aq");
+            jrAqField.setAccessible(true);
+            jrAlField = jrClass.getDeclaredField("al");
+            jrAlField.setAccessible(true);
+            jrAxField = jrClass.getDeclaredField("ax"); // jf packet definition
+            jrAxField.setAccessible(true);
 
-            // Build an identity map of every static jb.* packet definition -> its field name,
-            // so each captured node can be labelled with its exact packet (e.g. "jb.af").
-            Class<?> jbClass = PacketReflection.getClientPacketClass();
-            jbName.clear();
-            for (Field f : jbClass.getDeclaredFields()) {
-                if (Modifier.isStatic(f.getModifiers()) && f.getType() == jbClass) {
+            // Build an identity map of every static jf.* packet definition -> its field name,
+            // so each captured node can be labelled with its exact packet (e.g. "jf.ea").
+            Class<?> jfClass = PacketReflection.getClientPacketClass();
+            jfName.clear();
+            for (Field f : jfClass.getDeclaredFields()) {
+                if (Modifier.isStatic(f.getModifiers()) && f.getType() == jfClass) {
                     f.setAccessible(true);
                     Object def = f.get(null);
                     if (def != null) {
-                        jbName.put(def, "jb." + f.getName());
+                        jfName.put(def, "jf." + f.getName());
                     }
                 }
             }
-            System.out.println("[PacketSniffer] mapped " + jbName.size() + " jb packet definitions");
+            System.out.println("[PacketSniffer] mapped " + jfName.size() + " jf packet definitions");
 
-            // Find the buffer's byte[] field ("al") — it lives on xi (superclass of xj).
-            Class<?> bufClass = jmAyField.getType();
+            // Find the buffer's byte[] field ("ak") — it lives on xm (superclass of xv).
+            Class<?> bufClass = jrAlField.getType();
             bufArrayField = findArrayField(bufClass);
             if (bufArrayField == null) {
                 System.out.println("[PacketSniffer] could not find byte[] field on " + bufClass.getName());
                 return false;
             }
 
-            // Output buffer: df.az (xi) holds the last flushed batch. Resolve its byte[] + offset.
-            dfAzField = df.getClass().getDeclaredField("az");
-            dfAzField.setAccessible(true);
-            Class<?> outClass = dfAzField.getType();
-            outArrayField = findArrayField(outClass);
-            outOffsetField = outClass.getDeclaredField("au");
-            outOffsetField.setAccessible(true);
-            System.out.println("[PacketSniffer] resolved: df=" + df.getClass().getSimpleName()
-                    + " list=" + noList.getClass().getSimpleName()
-                    + " node=" + jmClass.getSimpleName()
+            System.out.println("[PacketSniffer] resolved: dw=" + dw.getClass().getSimpleName()
+                    + " list=" + nuList.getClass().getSimpleName()
+                    + " node=" + jrClass.getSimpleName()
                     + " buf=" + bufClass.getSimpleName()
                     + " arrayField=" + bufArrayField.getName());
             return true;
         } catch (Exception e) {
             System.out.println("[PacketSniffer] resolve failed: " + e);
-            dfAkField = null;
+            dwAgField = null;
             return false;
         }
     }

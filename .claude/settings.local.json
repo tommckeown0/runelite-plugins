@@ -22,7 +22,12 @@
       "Bash(git add:*)",
       "Bash(dir:*)",
       "Bash(findstr:*)",
-      "WebFetch(domain:repo.runelite.net)"
+      "WebFetch(domain:repo.runelite.net)",
+      "Bash(mkdir -p /tmp/extract_api)",
+      "Read(//tmp/**)",
+      "Bash(rm -rf ./*)",
+      "Bash(C:/Users/tommc/.jdks/temurin-11.0.29/bin/jar.exe xf *)",
+      "Bash(C:/Users/tommc/.jdks/temurin-11.0.29/bin/javap.exe -p net/runelite/api/events/GraphicsObjectCreated.class)"
     ],
     "deny": [],
     "ask": []

@@ -1,6 +1,8 @@
 package com.example;
 
+import com.example.AImpKillerGWD.AImpKillerGWDPlugin;
 import com.example.ANewYews.ANewYewsPlugin;
+import com.example.ATormentedDemon.ATormentedDemonPlugin;
 import com.example.BarbarianFishing.BarbarianFishingPlugin;
 import com.example.CookingMonkfish.CookingMonkfishPlugin;
 import com.example.CrashedStar.CrashedStarPlugin;
@@ -12,8 +14,10 @@ import com.example.GreenDhideBodies.GreenDhideBodiesPlugin;
 import com.example.Hunllef.HunllefPlugin;
 import com.example.MotherlodeMine.MotherlodeMinePlugin;
 import com.example.NewTrees.NewTreesPlugin;
+import com.example.APrayerFlicker.PrayerFlickerPlugin;
 import com.example.PacketSniffer.PacketSnifferPlugin;
 import com.example.PacketUtils.PacketUtilsPlugin;
+import com.example.PrayerFlickDiagnostic.PrayerFlickDiagnosticPlugin;
 import com.example.Prayer.PrayerTrainingPlugin;
 import com.example.RooftopAgility.RooftopAgilityPlugin;
 import com.example.SalamanderHunting.SalamanderHuntingPlugin;
@@ -47,7 +51,11 @@ public class ExamplePluginTest {
                 RooftopAgilityPlugin.class,
                 SlayerCombatPlugin.class,
                 TileCoordinatesPlugin.class,
-                PacketSnifferPlugin.class
+                PacketSnifferPlugin.class,
+                PrayerFlickDiagnosticPlugin.class,
+                PrayerFlickerPlugin.class,
+                AImpKillerGWDPlugin.class,
+                ATormentedDemonPlugin.class
         );
         RuneLite.main(args);
     }

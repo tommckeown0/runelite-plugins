@@ -3,22 +3,19 @@ package com.example.Prayer;
 import com.example.EthanApiPlugin.Collections.Inventory;
 import com.example.EthanApiPlugin.Collections.NPCs;
 import com.example.EthanApiPlugin.Collections.TileObjects;
+import com.example.EthanApiPlugin.Collections.query.TileObjectQuery;
 import com.example.InteractionApi.HumanLikeDelay;
-import com.example.InteractionApi.NPCInteraction;
-import com.example.InteractionApi.RealisticClickHelper;
-import com.example.InteractionApi.TileObjectInteraction;
-import com.example.Packets.MousePackets;
-import com.example.Packets.NPCPackets;
-import com.example.Packets.ObjectPackets;
-import com.example.Packets.WidgetPackets;
+import com.example.InteractionApi.MenuActionInteractions;
 import com.google.inject.Inject;
 import com.google.inject.Provides;
 import net.runelite.api.Client;
 import net.runelite.api.GameState;
+import net.runelite.api.MenuAction;
 import net.runelite.api.NPC;
 import net.runelite.api.ObjectComposition;
 import net.runelite.api.Player;
 import net.runelite.api.TileObject;
+import net.runelite.api.coords.LocalPoint;
 import net.runelite.api.coords.WorldPoint;
 import net.runelite.api.events.AnimationChanged;
 import net.runelite.api.events.GameTick;
@@ -32,6 +29,7 @@ import net.runelite.client.plugins.PluginDescriptor;
 
 import java.time.LocalDateTime;
 import java.time.format.DateTimeFormatter;
+import java.util.Arrays;
 import java.util.Optional;
 
 @PluginDescriptor(
@@ -65,6 +63,11 @@ public class PrayerTrainingPlugin extends Plugin {
     private static final int GILDED_ALTAR_ID = 13197;
     private static final int PHIALS_NPC_ID = 1614;
     private static final int HOUSE_ADVERTISEMENT_ID = 29091;
+
+    // House Advertisement's exact wording isn't verified in-game yet — tried in this order,
+    // first one present on the object's composition wins. If none match, the actual action
+    // list is logged so the real string can be added here.
+    private static final String[] HOUSE_ADVERTISEMENT_TELEPORT_ACTIONS = {"Visit-Last", "Last", "Visit"};
 
     // Animation IDs
     private static final int OFFERING_ANIMATION = 3705;
@@ -118,7 +121,6 @@ public class PrayerTrainingPlugin extends Plugin {
     @Override
     protected void startUp() {
         logAlways("Prayer plugin started");
-        RealisticClickHelper.setLoggingEnabled(config.debugLogging());
 
         // Reset state
         currentState = PrayerState.IDLE;
@@ -287,41 +289,84 @@ public class PrayerTrainingPlugin extends Plugin {
             return;
         }
 
-        NPC phialsNpc = phials.get();
+        Widget bw = bonesWidget.get();
+        NPC npc = phials.get();
+        logAlways("DIAG phials itemId=" + bw.getItemId() + " widgetId=" + bw.getId()
+                + " slot=" + bw.getIndex() + " npcIndex=" + npc.getIndex());
 
-        // Get click point with camera rotation if needed
-        java.awt.Point clickPoint = RealisticClickHelper.getNPCClickPoint(phialsNpc, true);
-        if (clickPoint != null) {
-            MousePackets.queueClickPacket(clickPoint.x, clickPoint.y);
-            NPCPackets.queueWidgetOnNPC(phialsNpc, bonesWidget.get());
-            logAlways("Used noted bones on Phials at (" + clickPoint.x + "," + clickPoint.y + ")");
+        if (MenuActionInteractions.useItemOnNpc(bw, npc)) {
+            logAlways("Used noted bones on Phials");
         } else {
-            errorAndStop("Could not get click point for Phials NPC");
+            errorAndStop("Could not use noted bones on Phials");
         }
     }
 
     private void selectChatOption() {
-        // Click chat option 3 (contains "Exchange all: 130 coins")
-        // Dialog options: 1=exchange 1, 2=exchange 5, 3=exchange all, 4=exchange X, 5=cancel
-
+        // Select the "Exchange all" option. Dialog options are NOT CC_OP buttons — a real click
+        // dispatches WIDGET_CONTINUE (op 30), which sends the RESUME_PAUSEBUTTON packet
+        // (jf.ep on 1.12.31.1: widget id + child index). CC_OP here was a silent no-op.
         Widget dialogOptions = client.getWidget(WidgetInfo.DIALOG_OPTION_OPTIONS);
         if (dialogOptions == null || dialogOptions.isHidden()) {
             log("Chat dialog not visible yet, waiting...");
             return;
         }
 
-        // Use option 3 directly (seems to be 1-indexed for resume pause)
-        int optionNumber = 3;
-        WidgetPackets.queueResumePause(WidgetInfo.DIALOG_OPTION_OPTIONS.getId(), optionNumber);
-        logAlways("Selected dialog option " + optionNumber + " (Exchange all)");
+        Widget[] options = dialogOptions.getChildren();
+        if (options == null) {
+            errorAndStop("Dialog options widget has no children");
+            return;
+        }
+
+        // Child 0 is the "Select an Option" header, so match by text rather than index.
+        // Live text observed 2026-07-12: "Exchange All: 125 coins." (third option) — prefix
+        // match so the varying coin amount doesn't matter.
+        Widget option = null;
+        for (Widget child : options) {
+            String text = child != null ? child.getText() : null;
+            if (text != null && text.toLowerCase().startsWith("exchange al")) {
+                option = child;
+                break;
+            }
+        }
+        if (option == null) {
+            StringBuilder texts = new StringBuilder();
+            for (Widget child : options) {
+                texts.append(child != null ? "'" + child.getText() + "' " : "null ");
+            }
+            errorAndStop("No 'Exchange All' option found among: " + texts);
+            return;
+        }
+
+        client.menuAction(option.getIndex(), option.getId(), MenuAction.WIDGET_CONTINUE,
+                0, -1, "Continue", "");
+        logAlways("Selected dialog option " + option.getIndex() + " (" + option.getText() + ")");
     }
 
     private void teleportToHouse() {
-        // Manual intervention required - just wait for user to click advertisement
-        logAlways("=== WAITING FOR MANUAL INPUT ===");
-        logAlways("Please manually click 'Visit-Last' on the house advertisement");
-        logAlways("The plugin will automatically continue once you're in the POH");
-        // Don't do anything - just wait for the state to complete when user teleports
+        Optional<TileObject> advertisement = TileObjects.search()
+                .withId(HOUSE_ADVERTISEMENT_ID)
+                .withinDistance(config.searchDistance())
+                .first();
+
+        if (advertisement.isEmpty()) {
+            errorAndStop("Cannot find house advertisement (ID: " + HOUSE_ADVERTISEMENT_ID + ")");
+            return;
+        }
+
+        TileObject board = advertisement.get();
+        for (String action : HOUSE_ADVERTISEMENT_TELEPORT_ACTIONS) {
+            if (MenuActionInteractions.interactObject(board, action)) {
+                logAlways("Clicked house advertisement '" + action + "'");
+                return;
+            }
+        }
+
+        ObjectComposition comp = TileObjectQuery.getObjectComposition(board);
+        String actions = comp != null && comp.getActions() != null
+                ? Arrays.toString(comp.getActions())
+                : "<no composition>";
+        errorAndStop("House advertisement has none of " + Arrays.toString(HOUSE_ADVERTISEMENT_TELEPORT_ACTIONS)
+                + " — actual actions: " + actions);
     }
 
     private void useBonesOnAltar() {
@@ -343,15 +388,20 @@ public class PrayerTrainingPlugin extends Plugin {
             return;
         }
 
+        Widget bw = bonesWidget.get();
         TileObject altarObj = altar.get();
-        java.awt.Point clickPoint = RealisticClickHelper.getTileObjectClickPoint(altarObj, true);
+        WorldPoint wp = altarObj.getWorldLocation();
+        LocalPoint lp = LocalPoint.fromWorld(client, wp);
+        logAlways("DIAG altar itemId=" + bw.getItemId() + " widgetId=" + bw.getId()
+                + " slot=" + bw.getIndex() + " objectId=" + altarObj.getId()
+                + " worldX=" + wp.getX() + " worldY=" + wp.getY()
+                + " sceneX=" + (lp != null ? lp.getSceneX() : -1)
+                + " sceneY=" + (lp != null ? lp.getSceneY() : -1));
 
-        if (clickPoint != null) {
-            MousePackets.queueClickPacket(clickPoint.x, clickPoint.y);
-            ObjectPackets.queueWidgetOnTileObject(bonesWidget.get(), altarObj);
-            logAlways("Used bones on altar at (" + clickPoint.x + "," + clickPoint.y + ")");
+        if (MenuActionInteractions.useItemOnObject(bw, altarObj)) {
+            logAlways("Used bones on altar");
         } else {
-            errorAndStop("Could not get click point for altar");
+            errorAndStop("Could not use bones on altar");
         }
     }
 
@@ -366,16 +416,10 @@ public class PrayerTrainingPlugin extends Plugin {
             return;
         }
 
-        TileObject portalObj = portal.get();
-        java.awt.Point clickPoint = RealisticClickHelper.getTileObjectClickPoint(portalObj, true);
-
-        if (clickPoint != null) {
-            MousePackets.queueClickPacket(clickPoint.x, clickPoint.y);
-            ObjectPackets.queueObjectAction(portalObj, false, "Enter");
-            logAlways("Clicked house portal 'Enter' at (" + clickPoint.x + "," + clickPoint.y + ")");
+        if (MenuActionInteractions.interactObject(portal.get(), "Enter")) {
+            logAlways("Clicked house portal 'Enter'");
         } else {
-            log("Could not get click point for portal, using fallback");
-            TileObjectInteraction.interact(portalObj, "Enter");
+            errorAndStop("Could not interact with house portal (ID: " + HOUSE_PORTAL_ID + ")");
         }
     }
 
@@ -525,9 +569,6 @@ public class PrayerTrainingPlugin extends Plugin {
         if (currentState == PrayerState.IDLE) {
             return;
         }
-
-        // Update debug logging setting
-        RealisticClickHelper.setLoggingEnabled(config.debugLogging());
 
         ticksInCurrentState++;
 

@@ -17,6 +17,7 @@ import net.runelite.api.TileItem;
 import net.runelite.api.TileObject;
 import net.runelite.api.coords.LocalPoint;
 import net.runelite.api.coords.WorldPoint;
+import net.runelite.api.widgets.Widget;
 import net.runelite.client.RuneLite;
 
 /**
@@ -220,6 +221,55 @@ public final class MenuActionInteractions {
         String name = comp != null && comp.getName() != null ? comp.getName() : "";
         client().menuAction(scene[0], scene[1], objectOptionMenuAction(oneBasedIndex),
                 obj.getId(), -1, action, name);
+        return true;
+    }
+
+    /**
+     * Uses an inventory item on an NPC via menuAction (e.g. bones on a bone-collecting NPC),
+     * mirroring the real two-click flow: selecting the item ({@code WIDGET_TARGET}, the same op
+     * a manual "Use" click performs) then targeting the NPC ({@code WIDGET_TARGET_ON_NPC}).
+     *
+     * <p>Traced in the rev-238 injected client (1.12.31.1): the select branch (op 25) stores the
+     * widget id / child index / <em>itemId argument</em> as the client's widget-target selection,
+     * and the target branch (op 8) builds its packet from that stored selection. The legacy
+     * {@code ITEM_USE_ON_*} ops (1/7) still build packets but read selection statics nothing
+     * writes any more, so they send garbage the server ignores — never use them. The itemId must
+     * go in menuAction's 5th (itemId) argument; the 4th (id) is ignored by the select branch.
+     */
+    public static boolean useItemOnNpc(Widget itemWidget, NPC npc) {
+        if (itemWidget == null || npc == null || itemWidget.getItemId() == -1) {
+            return false;
+        }
+        Client client = client();
+        client.menuAction(itemWidget.getIndex(), itemWidget.getId(), MenuAction.WIDGET_TARGET,
+                0, itemWidget.getItemId(), "Use", "");
+        String name = npc.getName();
+        client.menuAction(0, 0, MenuAction.WIDGET_TARGET_ON_NPC, npc.getIndex(), -1,
+                "Use", name != null ? name : "");
+        return true;
+    }
+
+    /**
+     * Uses an inventory item on a world object via menuAction (e.g. bones on an altar), mirroring
+     * the real two-click flow: selecting the item ({@code WIDGET_TARGET}) then targeting the
+     * object ({@code WIDGET_TARGET_ON_GAME_OBJECT}). See {@link #useItemOnNpc} for why the
+     * itemId goes in the 5th argument and why the legacy {@code ITEM_USE_ON_*} ops are dead.
+     */
+    public static boolean useItemOnObject(Widget itemWidget, TileObject obj) {
+        if (itemWidget == null || obj == null || itemWidget.getItemId() == -1) {
+            return false;
+        }
+        int[] scene = objectSceneCoords(obj);
+        if (scene == null) {
+            return false;
+        }
+        Client client = client();
+        client.menuAction(itemWidget.getIndex(), itemWidget.getId(), MenuAction.WIDGET_TARGET,
+                0, itemWidget.getItemId(), "Use", "");
+        ObjectComposition comp = TileObjectQuery.getObjectComposition(obj);
+        String name = comp != null && comp.getName() != null ? comp.getName() : "";
+        client.menuAction(scene[0], scene[1], MenuAction.WIDGET_TARGET_ON_GAME_OBJECT, obj.getId(),
+                -1, "Use", name);
         return true;
     }
 
