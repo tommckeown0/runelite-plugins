@@ -313,16 +313,17 @@ public class ATormentedDemonPlugin extends Plugin {
                 || !Equipment.search().matchesWildCardNoCase("*ballista*").empty();
     }
 
-    // toRanged=true switches to A Gear Switcher's rangedGear loadout + Eagle Eye, false switches
-    // to its meleeGear loadout + Piety - the exact same items/prayers GearSwitcherPlugin's own
-    // F9/F10 hotkeys use, just triggered automatically off the demon's protection prayer.
+    // toRanged=true switches to A Gear Switcher's rangedGear loadout + Rigour, false switches
+    // to its meleeGear loadout + Piety - Rigour/Piety are the current-tier offensive prayers
+    // (Eagle Eye is the pre-Morytania-diary ranged prayer, weaker than Rigour), triggered
+    // automatically off the demon's protection prayer.
     private void switchAttackStyle(boolean toRanged) {
         if (gearSwitcherConfig == null) {
             return;
         }
         if (toRanged) {
-            log("Auto-switching to RANGED gear (A Gear Switcher's rangedGear list) + Eagle Eye");
-            equipLoadout(gearSwitcherConfig.rangedGear(), Prayer.EAGLE_EYE);
+            log("Auto-switching to RANGED gear (A Gear Switcher's rangedGear list) + Rigour");
+            equipLoadout(gearSwitcherConfig.rangedGear(), Prayer.RIGOUR);
         } else {
             log("Auto-switching to MELEE gear (A Gear Switcher's meleeGear list) + Piety");
             equipLoadout(gearSwitcherConfig.meleeGear(), Prayer.PIETY);
