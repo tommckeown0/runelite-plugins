@@ -41,10 +41,16 @@ public class PrayerFlickDiagnosticPlugin extends Plugin {
 
     // GraphicsObjectCreated has no source-actor link, so we can't filter it by TRACKED_IDS -
     // instead log anything spawning within this many tiles of the player, on the assumption the
-    // boss room has little unrelated visual noise (used to catch the gorilla boulder's warning
-    // shadow, which has no NPC animation or projectile of its own per the wiki).
+    // boss room has little unrelated visual noise. Useful when hunting ground-AoE warning markers.
     private static final int GRAPHICS_OBJECT_LOG_RADIUS = 15;
 
+    // Interpreting the logs (lessons from the demonic gorilla boulder hunt, 2026-07):
+    // - Hitsplat types: 12 = BLOCK_ME (matching protection prayer was up), 16 = DAMAGE_ME.
+    // - Within one tick, HIT lines print BEFORE ANIM lines - a type=16 hit "with no attack
+    //   animation nearby" may be explained by an attack anim logged just below it, same tick.
+    // - Attacks that fall from the sky (gorilla boulder, id 856) appear as ground-targeted
+    //   projectiles with source=unknown (no source actor), targetPoint = exact landing tile,
+    //   remainingCycles/30 = ticks until landing. Don't require a source NPC when hunting AoEs.
     @Inject
     private Client client;
 
@@ -119,7 +125,10 @@ public class PrayerFlickDiagnosticPlugin extends Plugin {
                     + " remainingCycles=" + remaining
                     + " (~" + (remaining / 30) + " ticks)"
                     + (targetIsMe ? " <<< TARGETING YOU" : "")
-                    + (groundTargetedFromTrackedNpc ? " <<< GROUND_TARGETED (possible fire bomb)" : ""));
+                    + (groundTargetedFromTrackedNpc ? " <<< GROUND_TARGETED (possible fire bomb)" : "")
+                    // Gorilla boulder: ground-targeted, no source actor (falls from the ceiling),
+                    // targetPoint = landing tile, ~4.5 tick flight. Confirmed across log7/8/9.
+                    + (proj.getId() == 856 && target == null ? " <<< GORILLA BOULDER" : ""));
         }
 
         if (proj.getInteracting() == client.getLocalPlayer() && remaining <= 30) {
@@ -129,10 +138,6 @@ public class PrayerFlickDiagnosticPlugin extends Plugin {
         }
     }
 
-    // Candidate detector for the demonic gorilla boulder: wiki says a shadow appears at the
-    // player's position when the attack is initiated, ~2 ticks before it lands, with no
-    // dedicated NPC animation or projectile of its own. GraphicsObject is the most likely event
-    // type for a ground-anchored visual warning like this.
     @Subscribe
     public void onGraphicsObjectCreated(GraphicsObjectCreated event) {
         Player player = client.getLocalPlayer();
