@@ -27,7 +27,10 @@
       "Read(//tmp/**)",
       "Bash(rm -rf ./*)",
       "Bash(C:/Users/tommc/.jdks/temurin-11.0.29/bin/jar.exe xf *)",
-      "Bash(C:/Users/tommc/.jdks/temurin-11.0.29/bin/javap.exe -p net/runelite/api/events/GraphicsObjectCreated.class)"
+      "Bash(C:/Users/tommc/.jdks/temurin-11.0.29/bin/javap.exe -p net/runelite/api/events/GraphicsObjectCreated.class)",
+      "Bash(mkdir -p /tmp/extract_api2)",
+      "Bash(cd /tmp/extract_api2)",
+      "Bash(C:/Users/tommc/.jdks/temurin-11.0.29/bin/jar.exe tf *)"
     ],
     "deny": [],
     "ask": []
