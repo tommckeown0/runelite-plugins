@@ -1,6 +1,7 @@
 package com.example;
 
 import com.example.AImpKillerGWD.AImpKillerGWDPlugin;
+import com.example.AInventorySetup.AInventorySetupPlugin;
 import com.example.ANewYews.ANewYewsPlugin;
 import com.example.ATormentedDemon.ATormentedDemonPlugin;
 import com.example.BarbarianFishing.BarbarianFishingPlugin;
@@ -55,7 +56,8 @@ public class ExamplePluginTest {
                 PrayerFlickDiagnosticPlugin.class,
                 PrayerFlickerPlugin.class,
                 AImpKillerGWDPlugin.class,
-                ATormentedDemonPlugin.class
+                ATormentedDemonPlugin.class,
+                AInventorySetupPlugin.class
         );
         RuneLite.main(args);
     }
