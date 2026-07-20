@@ -193,6 +193,16 @@ public interface SlayerCombatConfig extends Config {
     }
 
     @ConfigItem(
+        keyName = "avoidOthersCombat",
+        name = "Avoid Others' Targets",
+        description = "Skip monsters that are already being attacked by another player, instead of wasting "
+                + "ticks walking up to a target someone else has claimed."
+    )
+    default boolean avoidOthersCombat() {
+        return true;
+    }
+
+    @ConfigItem(
         keyName = "enableProtectionPrayer",
         name = "Auto Protection Prayer",
         description = "Keep the selected monster's protection prayer active (e.g. Protect from Melee for "

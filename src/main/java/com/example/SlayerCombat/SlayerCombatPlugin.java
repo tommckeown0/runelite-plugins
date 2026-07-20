@@ -543,6 +543,12 @@ public class SlayerCombatPlugin extends Plugin {
         }
     }
 
+    /** True if some other player (not us) is currently the NPC's interacting target. */
+    private boolean isBeingFoughtByOtherPlayer(NPC npc) {
+        Actor interacting = npc.getInteracting();
+        return interacting instanceof Player && interacting != client.getLocalPlayer();
+    }
+
     private boolean isInCombat() {
         Actor interacting = client.getLocalPlayer().getInteracting();
         if (!(interacting instanceof NPC)) {
@@ -584,7 +590,8 @@ public class SlayerCombatPlugin extends Plugin {
 
         // Prefer a monster that is already attacking us. It's the real threat, it's
         // adjacent/reachable, and locking onto it stops us thrashing toward a different
-        // (possibly unreachable) NPC while one is already on us. Fall back to nearest.
+        // (possibly unreachable) NPC while one is already on us. Fall back to nearest,
+        // skipping targets another player already has claimed (unless the config disables that).
         Optional<NPC> target = NPCs.search()
                 .idInList(monster.npcIdList())
                 .alive()
@@ -595,11 +602,13 @@ public class SlayerCombatPlugin extends Plugin {
             target = NPCs.search()
                     .idInList(monster.npcIdList())
                     .alive()
+                    .filter(npc -> !config.avoidOthersCombat() || !isBeingFoughtByOtherPlayer(npc))
                     .nearestToPlayer();
         }
 
         if (!target.isPresent()) {
-            log("No alive target with id in " + monster.npcIdList() + " found nearby");
+            log("No alive target with id in " + monster.npcIdList() + " found nearby"
+                    + (config.avoidOthersCombat() ? " (or all in range are claimed by other players)" : ""));
             return;
         }
 
