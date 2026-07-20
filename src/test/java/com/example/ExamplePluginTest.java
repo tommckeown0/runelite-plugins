@@ -1,13 +1,64 @@
 package com.example;
 
+import com.example.AImpKillerGWD.AImpKillerGWDPlugin;
+import com.example.AInventorySetup.AInventorySetupPlugin;
+import com.example.ANewYews.ANewYewsPlugin;
+import com.example.ATormentedDemon.ATormentedDemonPlugin;
+import com.example.BarbarianFishing.BarbarianFishingPlugin;
+import com.example.CookingMonkfish.CookingMonkfishPlugin;
+import com.example.CrashedStar.CrashedStarPlugin;
+import com.example.DemonicGorilla.DemonicGorillaPlugin;
 import com.example.EthanApiPlugin.EthanApiPlugin;
+import com.example.FreezeTimer.FreezeTimerPlugin;
+import com.example.GearSwitcher.GearSwitcherPlugin;
+import com.example.GreenDhideBodies.GreenDhideBodiesPlugin;
+import com.example.Hunllef.HunllefPlugin;
+import com.example.MotherlodeMine.MotherlodeMinePlugin;
+import com.example.NewTrees.NewTreesPlugin;
+import com.example.APrayerFlicker.PrayerFlickerPlugin;
+import com.example.PacketSniffer.PacketSnifferPlugin;
 import com.example.PacketUtils.PacketUtilsPlugin;
+import com.example.PrayerFlickDiagnostic.PrayerFlickDiagnosticPlugin;
+import com.example.Prayer.PrayerTrainingPlugin;
+import com.example.RooftopAgility.RooftopAgilityPlugin;
+import com.example.SalamanderHunting.SalamanderHuntingPlugin;
+import com.example.Salvaging.SimpleSalvagingPlugin;
+import com.example.SlayerCombat.SlayerCombatPlugin;
+import com.example.Testing.TestingPlugin;
+import com.example.TileCoordinates.TileCoordinatesPlugin;
 import net.runelite.client.RuneLite;
 import net.runelite.client.externalplugins.ExternalPluginManager;
 
 public class ExamplePluginTest {
     public static void main(String[] args) throws Exception {
-        ExternalPluginManager.loadBuiltin(EthanApiPlugin.class, PacketUtilsPlugin.class);
+        ExternalPluginManager.loadBuiltin(
+                EthanApiPlugin.class,
+                PacketUtilsPlugin.class,
+                CrashedStarPlugin.class,
+                DemonicGorillaPlugin.class,
+                GearSwitcherPlugin.class,
+                MotherlodeMinePlugin.class,
+                TestingPlugin.class,
+                BarbarianFishingPlugin.class,
+                NewTreesPlugin.class,
+                PrayerTrainingPlugin.class,
+                FreezeTimerPlugin.class,
+                SimpleSalvagingPlugin.class,
+                SalamanderHuntingPlugin.class,
+                HunllefPlugin.class,
+                ANewYewsPlugin.class,
+                CookingMonkfishPlugin.class,
+                GreenDhideBodiesPlugin.class,
+                RooftopAgilityPlugin.class,
+                SlayerCombatPlugin.class,
+                TileCoordinatesPlugin.class,
+                PacketSnifferPlugin.class,
+                PrayerFlickDiagnosticPlugin.class,
+                PrayerFlickerPlugin.class,
+                AImpKillerGWDPlugin.class,
+                ATormentedDemonPlugin.class,
+                AInventorySetupPlugin.class
+        );
         RuneLite.main(args);
     }
 }

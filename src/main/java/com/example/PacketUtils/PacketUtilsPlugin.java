@@ -47,8 +47,10 @@ public class PacketUtilsPlugin extends Plugin {
     Client client;
     static Client staticClient;
     public static Method addNodeMethod;
-    public static boolean usingClientAddNode = false;
-    public static final int CLIENT_REV = 236;
+    // Default true for rev 238: df.az(jm,int) is an instance method on the packet writer.
+    // setupRuneliteUpdateHandling may override this after auto-detecting from the decompiled client.
+    public static boolean usingClientAddNode = true;
+    public static final int CLIENT_REV = 238;
     private static String loadedConfigName = "";
     @Inject
     private PluginManager pluginManager;

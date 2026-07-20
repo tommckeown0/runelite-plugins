@@ -1,0 +1,38 @@
+{
+  "permissions": {
+    "allow": [
+      "Bash(javac:*)",
+      "Bash(java:*)",
+      "Bash(./gradlew build:*)",
+      "Bash(./gradlew clean build:*)",
+      "Bash(./gradlew compileJava:*)",
+      "Bash(find:*)",
+      "WebSearch",
+      "WebFetch(domain:github.com)",
+      "Bash(./gradlew runPlugin:*)",
+      "Bash(curl:*)",
+      "WebFetch(domain:raw.githubusercontent.com)",
+      "Bash(git clone:*)",
+      "WebFetch(domain:static.runelite.net)",
+      "Bash(gradlew.bat build:*)",
+      "Bash(git remote add:*)",
+      "Bash(git fetch:*)",
+      "Bash(git cherry-pick:*)",
+      "Bash(git checkout:*)",
+      "Bash(git add:*)",
+      "Bash(dir:*)",
+      "Bash(findstr:*)",
+      "WebFetch(domain:repo.runelite.net)",
+      "Bash(mkdir -p /tmp/extract_api)",
+      "Read(//tmp/**)",
+      "Bash(rm -rf ./*)",
+      "Bash(C:/Users/tommc/.jdks/temurin-11.0.29/bin/jar.exe xf *)",
+      "Bash(C:/Users/tommc/.jdks/temurin-11.0.29/bin/javap.exe -p net/runelite/api/events/GraphicsObjectCreated.class)",
+      "Bash(mkdir -p /tmp/extract_api2)",
+      "Bash(cd /tmp/extract_api2)",
+      "Bash(C:/Users/tommc/.jdks/temurin-11.0.29/bin/jar.exe tf *)"
+    ],
+    "deny": [],
+    "ask": []
+  }
+}

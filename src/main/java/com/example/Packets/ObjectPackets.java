@@ -58,15 +58,11 @@ public class ObjectPackets {
                 continue;
             actions.set(i, actions.get(i).toLowerCase());
         }
-        Point p;
-        if (object instanceof GameObject) {
-            GameObject gameObject = (GameObject) object;
-            p = gameObject.getSceneMinLocation();
-        } else {
-            p = new Point(object.getLocalLocation().getSceneX(), object.getLocalLocation().getSceneY());
-        }
-        LocalPoint lp = new LocalPoint(p.getX(), p.getY());
-        WorldPoint wp = WorldPoint.fromScene(PacketReflection.getClient(), lp.getX(), lp.getY(), object.getPlane());
+
+        // Use getWorldLocation() directly instead of converting from scene coordinates
+        // This works correctly for non-top-level world views (e.g., sailing boats)
+        WorldPoint wp = object.getWorldLocation();
+
         int num = -1;
         for (String action : actions) {
             for (String action2 : actionlist) {
@@ -90,15 +86,9 @@ public class ObjectPackets {
     }
 
     public static void queueWidgetOnTileObject(Widget widget, TileObject object) {
-        Point p;
-        if (object instanceof GameObject) {
-            GameObject gameObject = (GameObject) object;
-            p = gameObject.getSceneMinLocation();
-        } else {
-            p = new Point(object.getLocalLocation().getSceneX(), object.getLocalLocation().getSceneY());
-        }
-        LocalPoint lp = new LocalPoint(p.getX(), p.getY());
-        WorldPoint wp = WorldPoint.fromScene(PacketReflection.getClient(), lp.getX(), lp.getY(), object.getPlane());
+        // Use getWorldLocation() directly instead of converting from scene coordinates
+        // This works correctly for non-top-level world views (e.g., sailing boats)
+        WorldPoint wp = object.getWorldLocation();
         queueWidgetOnTileObject(object.getId(), wp.getX(), wp.getY(), widget.getIndex(),
                 widget.getItemId(),
                 widget.getId(),
